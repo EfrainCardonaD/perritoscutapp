@@ -1,0 +1,32 @@
+services:
+  spring-api-image:
+    image: perritoscut
+    container_name: contenedor-cut-spring
+    ports:
+      - "80:8080"
+      - "443:8443"
+    networks:
+      - backend-network
+    environment:
+      - DB_URL=${DB_URL}
+      - DB_USERNAME=${DB_USERNAME}
+      - DB_PASSWORD=${DB_PASSWORD}
+      - JWT_SECRET=${JWT_SECRET}
+      - FLYWAY_PASSWORD=${FLYWAY_PASSWORD}
+      - FLYWAY_USER=${FLYWAY_USER}
+
+  histogramas-py:
+    image: app.py
+    container_name: histogramas-container
+    ports:
+      - "5000:80"  # Exponer Flask en el puerto 5000 en el host
+    networks:
+      - backend-network
+    environment:
+      - DB_URL_PYTHON=${DB_URL_PYTHON}
+      - DB_USERNAME=${DB_USERNAME}
+      - DB_PASSWORD=${DB_PASSWORD}
+
+networks:
+  backend-network:
+    driver: bridge
