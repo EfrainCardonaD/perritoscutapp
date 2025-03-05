@@ -1,7 +1,4 @@
 package com.cut.cardona.controllers.api;
-
-
-
 import com.cut.cardona.errores.ValidacionDeIntegridad;
 import com.cut.cardona.modelo.usuarios.DatosAutenticacionUsuario;
 import com.cut.cardona.modelo.usuarios.RepositorioUsuario;
@@ -41,6 +38,10 @@ public class AutenticationController {
 
     @PostMapping
     public ResponseEntity autenticarUsuario(@RequestBody DatosAutenticacionUsuario datosAutenticacionUsuario) {
+        // Imprime en consola los datos recibidos
+        System.out.println("Datos recibidos: " + datosAutenticacionUsuario);
+        // O usando un logger (mejor práctica)
+        // logger.info("Datos recibidos: {}", datosAutenticacionUsuario);
         try {
             Authentication authenticationToken = new UsernamePasswordAuthenticationToken(
                     datosAutenticacionUsuario.userName(),
