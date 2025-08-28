@@ -17,54 +17,86 @@ import java.time.ZoneId;
 @Service
 public class TokenService {
 
-    //@Value("${JWT_SECRET}")
-    @Value("123456")
+    @Value("${app.security.jwt.secret:changeit}")
     private String apiSecret;
+
+    @Value("${app.security.jwt.issuer:perritoscutapp}")
+    private String issuer;
 
     public String generarToken(Usuario usuario) {
         try {
             Algorithm algorithm = Algorithm.HMAC256(apiSecret);
-
-            String token = JWT.create()
-                    .withIssuer("graficos")
+            return JWT.create()
+                    .withIssuer(issuer)
                     .withSubject(usuario.getUsername())
                     .withClaim("roles", usuario.getRol().toString())
-                    .withClaim("id", usuario.getId())
+                    .withClaim("id", String.valueOf(usuario.getId()))
                     .withExpiresAt(generarFechaDeExpiacion())
                     .sign(algorithm);
-            return token;
         } catch (JWTCreationException exception) {
-            // Invalid Signing configuration / Couldn't convert Claims.
             throw new RuntimeException();
         }
 
     }
 
     public String getSubject(String token) {
-        DecodedJWT decodedJWT =  null;
         try {
             Algorithm algorithm = Algorithm.HMAC256(apiSecret);
             JWTVerifier verifier  = JWT.require(algorithm)
-                    .withIssuer("graficos")
+                    .withIssuer(issuer)
                     .build();
-            decodedJWT = verifier.verify(token);
+            DecodedJWT decodedJWT = verifier.verify(token);
+            return decodedJWT.getSubject();
         } catch (JWTVerificationException exception) {
             throw  new RuntimeException("token invalido");
         }
-
-        return decodedJWT.getSubject();
-
     }
 
     private Instant generarFechaDeExpiacion(){
 
-        ZoneId zonaHoraria = ZoneId.of("America/New_York"); // Otra forma de representar UTC-5:00 (zona horaria de Nueva York)
+        ZoneId zonaHoraria = ZoneId.of("America/New_York");
         LocalDateTime fechaActual = LocalDateTime.now(zonaHoraria);
         LocalDateTime fechaExpiracion = fechaActual.plusDays(1);
         return fechaExpiracion.toInstant(zonaHoraria.getRules().getOffset(fechaExpiracion));
     }
 
+    public String generarRefreshToken(Usuario usuario) {
+        try {
+            Algorithm algorithm = Algorithm.HMAC256(apiSecret);
+            return JWT.create()
+                    .withIssuer(issuer)
+                    .withSubject(usuario.getUsername())
+                    .withClaim("roles", usuario.getRol().toString())
+                    .withClaim("id", String.valueOf(usuario.getId()))
+                    .withExpiresAt(generarFechaDeExpiacionRefreshToken())
+                    .sign(algorithm);
+        } catch (JWTCreationException exception) {
+            throw new RuntimeException();
+        }
     }
 
+    private Instant generarFechaDeExpiacionRefreshToken() {
+        ZoneId zonaHoraria = ZoneId.of("America/New_York");
+        LocalDateTime fechaActual = LocalDateTime.now(zonaHoraria);
+        LocalDateTime fechaExpiracion = fechaActual.plusDays(30);
+        return fechaExpiracion.toInstant(zonaHoraria.getRules().getOffset(fechaExpiracion));
 
+    }
 
+    public long getExpirationTime() {
+        ZoneId zonaHoraria = ZoneId.of("America/New_York");
+        LocalDateTime fechaActual = LocalDateTime.now(zonaHoraria);
+        LocalDateTime fechaExpiracion = fechaActual.plusDays(1);
+        return fechaExpiracion.toInstant(zonaHoraria.getRules().getOffset(fechaExpiracion)).toEpochMilli();
+    }
+
+    public void revokeToken(String token) {
+        // TODO: Implementar blacklist de tokens revocados
+    }
+
+    // Método alias para compatibilidad
+    public String generateToken(Usuario usuario) {
+        return generarToken(usuario);
+    }
+
+}

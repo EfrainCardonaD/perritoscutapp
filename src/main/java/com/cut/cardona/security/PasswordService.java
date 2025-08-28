@@ -2,21 +2,19 @@ package com.cut.cardona.security;
 
 import com.cut.cardona.modelo.usuarios.RepositorioUsuario;
 import com.cut.cardona.modelo.usuarios.Usuario;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.security.core.userdetails.UserDetails;
+import lombok.RequiredArgsConstructor;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
 import java.util.Optional;
 
 @Service
+@RequiredArgsConstructor // ✅ Constructor injection automático
 public class PasswordService {
 
-    @Autowired
-    private PasswordEncoder passwordEncoder;
-
-    @Autowired
-    private RepositorioUsuario repositorioUsuario;
+    // ✅ Constructor injection - inmutable y testeable
+    private final PasswordEncoder passwordEncoder;
+    private final RepositorioUsuario repositorioUsuario;
 
     public boolean comprobarContrasenia(String username, String rawPassword) {
         // Aquí obtienes tu entidad Usuario en lugar de UserDetails

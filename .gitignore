@@ -31,3 +31,10 @@ build/
 
 ### VS Code ###
 .vscode/
+
+# Archivos de entorno y sensibles
+.env
+*.env
+*.env.local
+**/uploads/**
+**/perfiles/**

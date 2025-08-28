@@ -1,4 +1,5 @@
 package com.cut.cardona.modelo.usuarios;
+
 import jakarta.persistence.*;
 import jakarta.validation.constraints.Email;
 import lombok.AllArgsConstructor;
@@ -10,9 +11,10 @@ import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.crypto.password.PasswordEncoder;
-
 import java.util.*;
 import java.sql.Timestamp;
+import java.util.UUID; // ✅ Import faltante agregado
+import com.cut.cardona.modelo.dto.registro.DtoRegistroUsuario; // ✅ Usar DTO en paquete correcto
 
 
 @Entity
@@ -22,10 +24,7 @@ import java.sql.Timestamp;
 @Setter
 @NoArgsConstructor
 public class Usuario implements UserDetails {
-    /*
-        @Id
-        @GeneratedValue(strategy = GenerationType.SEQUENCE)
-        private Long id;*/
+
     @Id
     @Column(name = "id", columnDefinition = "CHAR(36)")
     private String id;
@@ -49,6 +48,9 @@ public class Usuario implements UserDetails {
     @Column(name = "activo", columnDefinition = "BOOLEAN DEFAULT TRUE")
     private Boolean activo;
 
+    @Column(name = "email_verificado", columnDefinition = "BOOLEAN DEFAULT FALSE")
+    private Boolean emailVerificado;
+
     @Column(name = "token")
     private String token;
 
@@ -58,6 +60,33 @@ public class Usuario implements UserDetails {
     @Enumerated(EnumType.STRING)
     private Roles rol;
 
+    // Métodos getter/setter explícitos para resolver conflictos
+    public String getId() {
+        return id;
+    }
+
+    public void setId(String id) {
+        this.id = id;
+    }
+
+    public Roles getRol() {
+        return rol;
+    }
+
+    public void setRol(Roles rol) {
+        this.rol = rol;
+    }
+
+    public Usuario(DtoRegistroUsuario registroUsuario, PasswordEncoder passwordEncoder) {
+        this.userName = registroUsuario.userName();
+        this.email = registroUsuario.email() != null ? registroUsuario.email().trim().toLowerCase() : null;
+        this.password = passwordEncoder.encode(registroUsuario.password());
+        this.activo = false; // Ahora inactivo hasta verificar email
+        this.emailVerificado = false;
+        this.rol = Roles.ROLE_USER;
+        this.id = UUID.randomUUID().toString();
+        this.fechaCreacion = new Timestamp(System.currentTimeMillis());
+    }
 
     @Override
     public Collection<? extends GrantedAuthority> getAuthorities() {
@@ -87,7 +116,7 @@ public class Usuario implements UserDetails {
 
     @Override
     public boolean isEnabled() {
-        return activo;
+        return isActivo();
     }
 
     @Override
@@ -102,25 +131,30 @@ public class Usuario implements UserDetails {
     }
 
     @Override
-    public final int hashCode() {
-        return this instanceof HibernateProxy ? ((HibernateProxy) this).getHibernateLazyInitializer().getPersistentClass().hashCode() : getClass().hashCode();
-    }
-
-    public Usuario(DtoRegistroUsuario dtoRegistroUsuario, PasswordEncoder passwordEncoder) {
-        this.userName = dtoRegistroUsuario.userName();
-        this.email = dtoRegistroUsuario.email();
-        this.password = passwordEncoder.encode(dtoRegistroUsuario.password());
-        this.activo = true;
-        this.fechaCreacion = new Timestamp(System.currentTimeMillis());
-    }
-
-
-    @PrePersist
-    public void prePersist() {
-        this.id = UUID.randomUUID().toString();
+    public int hashCode() {
+        return getClass().hashCode();
     }
 
     public boolean isActivo() {
-        return true;
+        return activo != null && activo;
+    }
+
+    @PrePersist
+    private void prePersist() {
+        if (this.id == null || this.id.isBlank()) {
+            this.id = UUID.randomUUID().toString();
+        }
+        if (this.fechaCreacion == null) {
+            this.fechaCreacion = new Timestamp(System.currentTimeMillis());
+        }
+        if (this.activo == null) {
+            this.activo = false; // default inactivo hasta verificar
+        }
+        if (this.emailVerificado == null) {
+            this.emailVerificado = false;
+        }
+        if (this.rol == null) {
+            this.rol = Roles.ROLE_USER;
+        }
     }
 }

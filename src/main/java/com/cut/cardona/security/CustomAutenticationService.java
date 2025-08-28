@@ -2,7 +2,7 @@ package com.cut.cardona.security;
 
 import com.cut.cardona.modelo.usuarios.RepositorioUsuario;
 import com.cut.cardona.modelo.usuarios.Usuario;
-import org.springframework.beans.factory.annotation.Autowired;
+import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
@@ -12,14 +12,23 @@ import org.springframework.stereotype.Service;
 
 import java.util.Collection;
 import java.util.List;
+import java.util.Optional;
 import java.util.stream.Collectors;
 
 @Service
+@RequiredArgsConstructor // ✅ Constructor injection automático
 public class CustomAutenticationService implements UserDetailsService {
 
-    @Autowired
-    private RepositorioUsuario usuarioRepository;
+    // ✅ Constructor injection - inmutable y testeable
+    private final RepositorioUsuario usuarioRepository;
 
+    /**
+     * Carga un usuario por su nombre de usuario o correo electrónico.
+     *
+     * @param usernameOrEmail el nombre de usuario o correo electrónico del usuario a cargar
+     * @return UserDetails que representa al usuario cargado
+     * @throws UsernameNotFoundException si no se encuentra un usuario con el nombre de usuario o correo electrónico proporcionado
+     */
     @Override
     public UserDetails loadUserByUsername(String usernameOrEmail) throws UsernameNotFoundException {
         Usuario usuario = usuarioRepository.findByUserNameOrEmail(usernameOrEmail, usernameOrEmail)
@@ -34,9 +43,8 @@ public class CustomAutenticationService implements UserDetailsService {
 
 }
 
-    /*
+/*
         @Override
         public UserDetails loadUserByUsername(String username) throws UsernameNotFoundException {
             return repositorioUsuario.findByUserNameOrEmail(username, username);
         }*/
-

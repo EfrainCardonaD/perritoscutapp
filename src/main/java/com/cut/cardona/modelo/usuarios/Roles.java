@@ -6,10 +6,11 @@ import java.util.List;
 
 public enum Roles {
     ROLE_ADMIN,
-    ROLE_USER;
+    ROLE_USER,
+    ROLE_REVIEWER;
 
     public List<SimpleGrantedAuthority> getAuthorities() {
-        return List.of(new SimpleGrantedAuthority("ROLE_" + this.name()));
+        return List.of(new SimpleGrantedAuthority(this.name()));
     }
 
 }

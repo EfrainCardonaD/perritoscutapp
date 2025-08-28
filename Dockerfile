@@ -1,25 +1,29 @@
-# Use Eclipse Temurin as the base image
-FROM eclipse-temurin:17.0.11_9-jdk-jammy
+# Etapa de build
+FROM maven:3.9.9-eclipse-temurin-17 AS builder
+WORKDIR /app
 
-# Define the working directory
-WORKDIR /root
+# Copiar descriptor y descargar dependencias primero para aprovechar cache
+COPY pom.xml .
+RUN mvn -q -DskipTests dependency:go-offline
 
-# Expose the application port
+# Copiar el código fuente y compilar
+COPY src ./src
+RUN mvn -q -DskipTests package
+
+# Etapa de runtime mínima
+FROM eclipse-temurin:17-jre-jammy
+
+# Crear usuario no root
+RUN useradd -m appuser
+USER appuser
+WORKDIR /app
+
+# Copiar el JAR construido
+COPY --from=builder /app/target/*.jar /app/app.jar
+
 EXPOSE 8080
 
-# Copy Maven wrapper and project files
-COPY ../pom.xml /root
-COPY ../mvnw /root/mvnw
-COPY ../.mvn /root/.mvn
+# Variables JVM opcionales
+ENV JAVA_OPTS=""
 
-# Download dependencies
-RUN chmod +x /root/mvnw && /root/mvnw dependency:go-offline
-
-# Copy the source code into the container
-COPY ./src /root/src
-
-# Build the application
-RUN /root/mvnw clean install -DskipTests
-
-# Set the entry point to run the app
-ENTRYPOINT ["java", "-jar", "target/spring-boot-docker.jar"]
+ENTRYPOINT ["sh", "-c", "java $JAVA_OPTS -jar /app/app.jar"]

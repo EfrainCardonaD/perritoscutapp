@@ -1,0 +1,719 @@
+{
+  "_type": "export",
+  "__export_format": 4,
+  "__export_date": "2025-01-10T21:00:00.000Z",
+  "__export_source": "insomnia.desktop.app:v2023.5.8",
+  "resources": [
+    {
+      "_id": "req_001",
+      "parentId": "fld_auth",
+      "modified": 1704920400000,
+      "created": 1704920400000,
+      "url": "{{ _.baseUrl }}/api/login",
+      "name": "Login - Autenticación",
+      "description": "Autentica usuario y obtiene tokens JWT",
+      "method": "POST",
+      "body": {
+        "mimeType": "application/json",
+        "text": "{\n  \"userName\": \"testuser\",\n  \"password\": \"password123\"\n}"
+      },
+      "parameters": [],
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json"
+        }
+      ],
+      "authentication": {},
+      "metaSortKey": -1704920400000,
+      "isPrivate": false,
+      "settingStoreCookies": true,
+      "settingSendCookies": true,
+      "settingDisableRenderRequestBody": false,
+      "settingEncodeUrl": true,
+      "settingRebuildPath": true,
+      "settingFollowRedirects": "global",
+      "_type": "request"
+    },
+    {
+      "_id": "req_002",
+      "parentId": "fld_auth",
+      "modified": 1704920400000,
+      "created": 1704920400000,
+      "url": "{{ _.baseUrl }}/api/refresh",
+      "name": "Refresh Token",
+      "description": "Renueva el token de acceso usando refresh token",
+      "method": "POST",
+      "body": {},
+      "parameters": [],
+      "headers": [
+        {
+          "name": "Authorization",
+          "value": "Bearer {% response 'body', 'req_001', 'json', '$.refreshToken' %}"
+        }
+      ],
+      "authentication": {},
+      "metaSortKey": -1704920300000,
+      "isPrivate": false,
+      "settingStoreCookies": true,
+      "settingSendCookies": true,
+      "settingDisableRenderRequestBody": false,
+      "settingEncodeUrl": true,
+      "settingRebuildPath": true,
+      "settingFollowRedirects": "global",
+      "_type": "request"
+    },
+    {
+      "_id": "req_003",
+      "parentId": "fld_auth",
+      "modified": 1704920400000,
+      "created": 1704920400000,
+      "url": "{{ _.baseUrl }}/api/logout",
+      "name": "Logout",
+      "description": "Cierra sesión e invalida el token",
+      "method": "POST",
+      "body": {},
+      "parameters": [],
+      "headers": [
+        {
+          "name": "Authorization",
+          "value": "Bearer {% response 'body', 'req_001', 'json', '$.token' %}"
+        }
+      ],
+      "authentication": {},
+      "metaSortKey": -1704920200000,
+      "isPrivate": false,
+      "settingStoreCookies": true,
+      "settingSendCookies": true,
+      "settingDisableRenderRequestBody": false,
+      "settingEncodeUrl": true,
+      "settingRebuildPath": true,
+      "settingFollowRedirects": "global",
+      "_type": "request"
+    },
+    {
+      "_id": "req_004",
+      "parentId": "fld_perfil",
+      "modified": 1704920400000,
+      "created": 1704920400000,
+      "url": "{{ _.baseUrl }}/api/perfil/registro-extendido",
+      "name": "Registro Extendido - Con Imagen",
+      "description": "Registra usuario con perfil completo e imagen",
+      "method": "POST",
+      "body": {
+        "mimeType": "multipart/form-data",
+        "params": [
+          {
+            "name": "userName",
+            "value": "juanperez",
+            "description": "Nombre de usuario único"
+          },
+          {
+            "name": "email",
+            "value": "juan@example.com",
+            "description": "Email del usuario"
+          },
+          {
+            "name": "password",
+            "value": "password123",
+            "description": "Contraseña del usuario"
+          },
+          {
+            "name": "nombreReal",
+            "value": "Juan Pérez García",
+            "description": "Nombre completo del usuario"
+          },
+          {
+            "name": "telefono",
+            "value": "+5215551234567",
+            "description": "Teléfono con código de país"
+          },
+          {
+            "name": "idioma",
+            "value": "es",
+            "description": "Idioma preferido (es, en, fr, etc.)"
+          },
+          {
+            "name": "zonaHoraria",
+            "value": "America/Mexico_City",
+            "description": "Zona horaria del usuario"
+          },
+          {
+            "name": "fechaNacimiento",
+            "value": "1990-05-15",
+            "description": "Fecha de nacimiento en formato YYYY-MM-DD"
+          },
+          {
+            "name": "fotoPerfil",
+            "value": "",
+            "description": "Archivo de imagen (JPEG, PNG, WebP, GIF - máx 5MB)",
+            "type": "file"
+          }
+        ]
+      },
+      "parameters": [],
+      "headers": [],
+      "authentication": {},
+      "metaSortKey": -1704920100000,
+      "isPrivate": false,
+      "settingStoreCookies": true,
+      "settingSendCookies": true,
+      "settingDisableRenderRequestBody": false,
+      "settingEncodeUrl": true,
+      "settingRebuildPath": true,
+      "settingFollowRedirects": "global",
+      "_type": "request"
+    },
+    {
+      "_id": "req_005",
+      "parentId": "fld_perfil",
+      "modified": 1704920400000,
+      "created": 1704920400000,
+      "url": "{{ _.baseUrl }}/api/perfil/registro-extendido",
+      "name": "Registro Extendido - Sin Imagen",
+      "description": "Registra usuario con perfil completo sin imagen",
+      "method": "POST",
+      "body": {
+        "mimeType": "multipart/form-data",
+        "params": [
+          {
+            "name": "userName",
+            "value": "mariagomez",
+            "description": "Nombre de usuario único"
+          },
+          {
+            "name": "email",
+            "value": "maria@example.com",
+            "description": "Email del usuario"
+          },
+          {
+            "name": "password",
+            "value": "password123",
+            "description": "Contraseña del usuario"
+          },
+          {
+            "name": "nombreReal",
+            "value": "María Gómez López",
+            "description": "Nombre completo del usuario"
+          },
+          {
+            "name": "telefono",
+            "value": "+5215559876543",
+            "description": "Teléfono con código de país"
+          },
+          {
+            "name": "idioma",
+            "value": "es",
+            "description": "Idioma preferido"
+          },
+          {
+            "name": "zonaHoraria",
+            "value": "America/Mexico_City",
+            "description": "Zona horaria del usuario"
+          },
+          {
+            "name": "fechaNacimiento",
+            "value": "1985-12-20",
+            "description": "Fecha de nacimiento"
+          }
+        ]
+      },
+      "parameters": [],
+      "headers": [],
+      "authentication": {},
+      "metaSortKey": -1704920000000,
+      "isPrivate": false,
+      "settingStoreCookies": true,
+      "settingSendCookies": true,
+      "settingDisableRenderRequestBody": false,
+      "settingEncodeUrl": true,
+      "settingRebuildPath": true,
+      "settingFollowRedirects": "global",
+      "_type": "request"
+    },
+    {
+      "_id": "req_006",
+      "parentId": "fld_perfil",
+      "modified": 1704920400000,
+      "created": 1704920400000,
+      "url": "{{ _.baseUrl }}/api/perfil/completo",
+      "name": "Obtener Perfil Completo",
+      "description": "Obtiene el perfil completo del usuario autenticado",
+      "method": "GET",
+      "body": {},
+      "parameters": [],
+      "headers": [
+        {
+          "name": "Authorization",
+          "value": "Bearer {% response 'body', 'req_001', 'json', '$.token' %}"
+        }
+      ],
+      "authentication": {},
+      "metaSortKey": -1704919900000,
+      "isPrivate": false,
+      "settingStoreCookies": true,
+      "settingSendCookies": true,
+      "settingDisableRenderRequestBody": false,
+      "settingEncodeUrl": true,
+      "settingRebuildPath": true,
+      "settingFollowRedirects": "global",
+      "_type": "request"
+    },
+    {
+      "_id": "req_007",
+      "parentId": "fld_perfil",
+      "modified": 1704920400000,
+      "created": 1704920400000,
+      "url": "{{ _.baseUrl }}/api/perfil/imagen",
+      "name": "Actualizar Imagen de Perfil",
+      "description": "Actualiza la imagen de perfil del usuario autenticado",
+      "method": "POST",
+      "body": {
+        "mimeType": "multipart/form-data",
+        "params": [
+          {
+            "name": "imagen",
+            "value": "",
+            "description": "Nueva imagen de perfil (JPEG, PNG, WebP, GIF - máx 5MB)",
+            "type": "file"
+          }
+        ]
+      },
+      "parameters": [],
+      "headers": [
+        {
+          "name": "Authorization",
+          "value": "Bearer {% response 'body', 'req_001', 'json', '$.token' %}"
+        }
+      ],
+      "authentication": {},
+      "metaSortKey": -1704919800000,
+      "isPrivate": false,
+      "settingStoreCookies": true,
+      "settingSendCookies": true,
+      "settingDisableRenderRequestBody": false,
+      "settingEncodeUrl": true,
+      "settingRebuildPath": true,
+      "settingFollowRedirects": "global",
+      "_type": "request"
+    },
+    {
+      "_id": "req_008",
+      "parentId": "fld_perfil",
+      "modified": 1704920400000,
+      "created": 1704920400000,
+      "url": "{{ _.baseUrl }}/api/perfil/usuario/{{ _.userId }}",
+      "name": "Obtener Perfil por ID (Admin)",
+      "description": "Obtiene el perfil de un usuario específico (solo administradores)",
+      "method": "GET",
+      "body": {},
+      "parameters": [],
+      "headers": [
+        {
+          "name": "Authorization",
+          "value": "Bearer {% response 'body', 'req_001', 'json', '$.token' %}"
+        }
+      ],
+      "authentication": {},
+      "metaSortKey": -1704919700000,
+      "isPrivate": false,
+      "settingStoreCookies": true,
+      "settingSendCookies": true,
+      "settingDisableRenderRequestBody": false,
+      "settingEncodeUrl": true,
+      "settingRebuildPath": true,
+      "settingFollowRedirects": "global",
+      "_type": "request"
+    },
+    {
+      "_id": "req_009",
+      "parentId": "fld_registro",
+      "modified": 1704920400000,
+      "created": 1704920400000,
+      "url": "{{ _.baseUrl }}/registro",
+      "name": "Mostrar Formulario de Registro",
+      "description": "Muestra el formulario de registro tradicional",
+      "method": "GET",
+      "body": {},
+      "parameters": [],
+      "headers": [],
+      "authentication": {},
+      "metaSortKey": -1704919600000,
+      "isPrivate": false,
+      "settingStoreCookies": true,
+      "settingSendCookies": true,
+      "settingDisableRenderRequestBody": false,
+      "settingEncodeUrl": true,
+      "settingRebuildPath": true,
+      "settingFollowRedirects": "global",
+      "_type": "request"
+    },
+    {
+      "_id": "req_010",
+      "parentId": "fld_registro",
+      "modified": 1704920400000,
+      "created": 1704920400000,
+      "url": "{{ _.baseUrl }}/registro",
+      "name": "Registro Básico de Usuario",
+      "description": "Registra usuario con formulario tradicional",
+      "method": "POST",
+      "body": {
+        "mimeType": "application/x-www-form-urlencoded",
+        "params": [
+          {
+            "name": "userName",
+            "value": "usuario123",
+            "description": "Nombre de usuario (solo alfanumérico)"
+          },
+          {
+            "name": "email",
+            "value": "usuario@example.com",
+            "description": "Email del usuario"
+          },
+          {
+            "name": "confirmEmail",
+            "value": "usuario@example.com",
+            "description": "Confirmación del email"
+          },
+          {
+            "name": "password",
+            "value": "password123",
+            "description": "Contraseña del usuario"
+          },
+          {
+            "name": "confirmPassword",
+            "value": "password123",
+            "description": "Confirmación de la contraseña"
+          },
+          {
+            "name": "terms",
+            "value": "true",
+            "description": "Aceptación de términos y condiciones"
+          }
+        ]
+      },
+      "parameters": [],
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/x-www-form-urlencoded"
+        }
+      ],
+      "authentication": {},
+      "metaSortKey": -1704919500000,
+      "isPrivate": false,
+      "settingStoreCookies": true,
+      "settingSendCookies": true,
+      "settingDisableRenderRequestBody": false,
+      "settingEncodeUrl": true,
+      "settingRebuildPath": true,
+      "settingFollowRedirects": "global",
+      "_type": "request"
+    },
+    {
+      "_id": "fld_auth",
+      "parentId": "wrk_main",
+      "modified": 1704920400000,
+      "created": 1704920400000,
+      "name": "🔐 Autenticación",
+      "description": "Endpoints de autenticación, login, logout y refresh de tokens",
+      "environment": {},
+      "environmentPropertyOrder": null,
+      "metaSortKey": -1704920400000,
+      "_type": "request_group"
+    },
+    {
+      "_id": "fld_perfil",
+      "parentId": "wrk_main",
+      "modified": 1704920400000,
+      "created": 1704920400000,
+      "name": "👤 Perfil de Usuario",
+      "description": "Endpoints para gestión de perfiles extendidos de usuario",
+      "environment": {},
+      "environmentPropertyOrder": null,
+      "metaSortKey": -1704920300000,
+      "_type": "request_group"
+    },
+    {
+      "_id": "fld_registro",
+      "parentId": "wrk_main",
+      "modified": 1704920400000,
+      "created": 1704920400000,
+      "name": "📝 Registro Básico",
+      "description": "Endpoints para registro tradicional de usuarios",
+      "environment": {},
+      "environmentPropertyOrder": null,
+      "metaSortKey": -1704920200000,
+      "_type": "request_group"
+    },
+    {
+      "_id": "fld_perros",
+      "parentId": "wrk_main",
+      "modified": 1704920400001,
+      "created": 1704920400001,
+      "name": "🐶 Perros",
+      "description": "Catálogo, creación y moderación de perros",
+      "environment": {},
+      "environmentPropertyOrder": null,
+      "metaSortKey": -1704920150000,
+      "_type": "request_group"
+    },
+    {
+      "_id": "req_p_catalogo",
+      "parentId": "fld_perros",
+      "modified": 1704920400001,
+      "created": 1704920400001,
+      "url": "{{ _.baseUrl }}/api/perros/catalogo",
+      "name": "Perros - Catálogo público (con filtros)",
+      "description": "GET catálogo público con filtros sexo/tamano/ubicacion y paginación",
+      "method": "GET",
+      "body": {},
+      "parameters": [
+        { "name": "sexo", "value": "Macho", "disabled": false },
+        { "name": "tamano", "value": "Mediano", "disabled": false },
+        { "name": "ubicacion", "value": "CDMX", "disabled": false },
+        { "name": "page", "value": "0", "disabled": false },
+        { "name": "size", "value": "20", "disabled": false }
+      ],
+      "headers": [],
+      "authentication": {},
+      "metaSortKey": -1704920149000,
+      "isPrivate": false,
+      "settingStoreCookies": true,
+      "settingSendCookies": true,
+      "settingDisableRenderRequestBody": false,
+      "settingEncodeUrl": true,
+      "settingRebuildPath": true,
+      "settingFollowRedirects": "global",
+      "_type": "request"
+    },
+    {
+      "_id": "req_p_crear",
+      "parentId": "fld_perros",
+      "modified": 1704920400001,
+      "created": 1704920400001,
+      "url": "{{ _.baseUrl }}/api/perros",
+      "name": "Perros - Crear (USER)",
+      "description": "Crea un perro. Requiere Authorization",
+      "method": "POST",
+      "body": {
+        "mimeType": "application/json",
+        "text": "{\n  \"nombre\": \"Luna\",\n  \"edad\": 2,\n  \"sexo\": \"Hembra\",\n  \"tamano\": \"Pequeño\",\n  \"raza\": \"Mestizo\",\n  \"descripcion\": \"Muy tranquila\",\n  \"ubicacion\": \"GDL\",\n  \"imagenes\": [{\n    \"url\": \"https://cdn/x.jpg\",\n    \"descripcion\": \"principal\",\n    \"principal\": true\n  }]\n}"
+      },
+      "parameters": [],
+      "headers": [
+        { "name": "Content-Type", "value": "application/json" },
+        { "name": "Authorization", "value": "Bearer {% response 'body', 'req_001', 'json', '$.token' %}" }
+      ],
+      "authentication": {},
+      "metaSortKey": -1704920148000,
+      "isPrivate": false,
+      "settingStoreCookies": true,
+      "settingSendCookies": true,
+      "settingDisableRenderRequestBody": false,
+      "settingEncodeUrl": true,
+      "settingRebuildPath": true,
+      "settingFollowRedirects": "global",
+      "_type": "request"
+    },
+    {
+      "_id": "req_p_aprobar",
+      "parentId": "fld_perros",
+      "modified": 1704920400001,
+      "created": 1704920400001,
+      "url": "{{ _.baseUrl }}/api/admin/perros/{{ _.perroId }}/aprobar",
+      "name": "Perros - Aprobar (ADMIN/REVIEWER)",
+      "description": "Aprueba un perro (requiere imagen principal)",
+      "method": "POST",
+      "body": {},
+      "parameters": [],
+      "headers": [
+        { "name": "Authorization", "value": "Bearer {% response 'body', 'req_001', 'json', '$.token' %}" }
+      ],
+      "authentication": {},
+      "metaSortKey": -1704920147000,
+      "isPrivate": false,
+      "settingStoreCookies": true,
+      "settingSendCookies": true,
+      "settingDisableRenderRequestBody": false,
+      "settingEncodeUrl": true,
+      "settingRebuildPath": true,
+      "settingFollowRedirects": "global",
+      "_type": "request"
+    },
+    {
+      "_id": "req_p_estado",
+      "parentId": "fld_perros",
+      "modified": 1704920400001,
+      "created": 1704920400001,
+      "url": "{{ _.baseUrl }}/api/admin/perros/{{ _.perroId }}/estado",
+      "name": "Perros - Cambiar estado adopción (ADMIN/REVIEWER)",
+      "description": "Cambiar estado_adopcion. 'Disponible' requiere revisión Aprobada",
+      "method": "PATCH",
+      "body": {},
+      "parameters": [ { "name":"estado", "value":"Disponible" } ],
+      "headers": [ { "name": "Authorization", "value": "Bearer {% response 'body', 'req_001', 'json', '$.token' %}" } ],
+      "authentication": {},
+      "metaSortKey": -1704920146000,
+      "isPrivate": false,
+      "settingStoreCookies": true,
+      "settingSendCookies": true,
+      "settingDisableRenderRequestBody": false,
+      "settingEncodeUrl": true,
+      "settingRebuildPath": true,
+      "settingFollowRedirects": "global",
+      "_type": "request"
+    },
+    {
+      "_id": "fld_adopciones",
+      "parentId": "wrk_main",
+      "modified": 1704920400002,
+      "created": 1704920400002,
+      "name": "📄 Adopciones",
+      "description": "Solicitudes de adopción y moderación",
+      "environment": {},
+      "environmentPropertyOrder": null,
+      "metaSortKey": -1704920130000,
+      "_type": "request_group"
+    },
+    {
+      "_id": "req_s_crear",
+      "parentId": "fld_adopciones",
+      "modified": 1704920400002,
+      "created": 1704920400002,
+      "url": "{{ _.baseUrl }}/api/solicitudes",
+      "name": "Solicitudes - Crear (USER)",
+      "description": "Crea una solicitud para un perro disponible y aprobado",
+      "method": "POST",
+      "body": {
+        "mimeType": "application/json",
+        "text": "{\n  \"perroId\": \"{{ _.perroId }}\",\n  \"mensaje\": \"Me encantaría adoptarlo\"\n}"
+      },
+      "parameters": [],
+      "headers": [
+        { "name": "Content-Type", "value": "application/json" },
+        { "name": "Authorization", "value": "Bearer {% response 'body', 'req_001', 'json', '$.token' %}" }
+      ],
+      "authentication": {},
+      "metaSortKey": -1704920129000,
+      "isPrivate": false,
+      "settingStoreCookies": true,
+      "settingSendCookies": true,
+      "settingDisableRenderRequestBody": false,
+      "settingEncodeUrl": true,
+      "settingRebuildPath": true,
+      "settingFollowRedirects": "global",
+      "_type": "request"
+    },
+    {
+      "_id": "req_s_documento",
+      "parentId": "fld_adopciones",
+      "modified": 1704920400002,
+      "created": 1704920400002,
+      "url": "{{ _.baseUrl }}/api/solicitudes/{{ _.solicitudId }}/documentos",
+      "name": "Solicitudes - Subir documento (USER)",
+      "description": "Adjunta documentos requeridos para revisión/aceptación",
+      "method": "POST",
+      "body": {
+        "mimeType": "application/json",
+        "text": "{\n  \"tipoDocumento\": \"Identificacion\",\n  \"urlDocumento\": \"https://cdn/doc1.pdf\",\n  \"nombreArchivo\": \"INE.pdf\",\n  \"tipoMime\": \"application/pdf\",\n  \"tamanoBytes\": 123456\n}"
+      },
+      "parameters": [],
+      "headers": [
+        { "name": "Content-Type", "value": "application/json" },
+        { "name": "Authorization", "value": "Bearer {% response 'body', 'req_001', 'json', '$.token' %}" }
+      ],
+      "authentication": {},
+      "metaSortKey": -1704920128000,
+      "isPrivate": false,
+      "settingStoreCookies": true,
+      "settingSendCookies": true,
+      "settingDisableRenderRequestBody": false,
+      "settingEncodeUrl": true,
+      "settingRebuildPath": true,
+      "settingFollowRedirects": "global",
+      "_type": "request"
+    },
+    {
+      "_id": "req_s_mias",
+      "parentId": "fld_adopciones",
+      "modified": 1704920400002,
+      "created": 1704920400002,
+      "url": "{{ _.baseUrl }}/api/solicitudes/mis",
+      "name": "Solicitudes - Mis solicitudes (USER)",
+      "description": "Listado de solicitudes del usuario",
+      "method": "GET",
+      "body": {},
+      "parameters": [],
+      "headers": [ { "name": "Authorization", "value": "Bearer {% response 'body', 'req_001', 'json', '$.token' %}" } ],
+      "authentication": {},
+      "metaSortKey": -1704920127000,
+      "isPrivate": false,
+      "settingStoreCookies": true,
+      "settingSendCookies": true,
+      "settingDisableRenderRequestBody": false,
+      "settingEncodeUrl": true,
+      "settingRebuildPath": true,
+      "settingFollowRedirects": "global",
+      "_type": "request"
+    },
+    {
+      "_id": "req_s_pendientes",
+      "parentId": "fld_adopciones",
+      "modified": 1704920400002,
+      "created": 1704920400002,
+      "url": "{{ _.baseUrl }}/api/admin/solicitudes/pendientes",
+      "name": "Solicitudes - Pendientes (ADMIN/REVIEWER)",
+      "description": "Solicitudes en estado 'Pendiente'",
+      "method": "GET",
+      "body": {},
+      "parameters": [],
+      "headers": [ { "name": "Authorization", "value": "Bearer {% response 'body', 'req_001', 'json', '$.token' %}" } ],
+      "authentication": {},
+      "metaSortKey": -1704920126000,
+      "isPrivate": false,
+      "settingStoreCookies": true,
+      "settingSendCookies": true,
+      "settingDisableRenderRequestBody": false,
+      "settingEncodeUrl": true,
+      "settingRebuildPath": true,
+      "settingFollowRedirects": "global",
+      "_type": "request"
+    },
+    {
+      "_id": "req_s_estado",
+      "parentId": "fld_adopciones",
+      "modified": 1704920400002,
+      "created": 1704920400002,
+      "url": "{{ _.baseUrl }}/api/admin/solicitudes/{{ _.solicitudId }}/estado",
+      "name": "Solicitudes - Cambiar estado (ADMIN/REVIEWER)",
+      "description": "Cambia el estado de la solicitud (En revisión|Aceptada|Rechazada|Cancelada)",
+      "method": "PATCH",
+      "body": {},
+      "parameters": [ { "name":"estado", "value":"Aceptada" } ],
+      "headers": [ { "name": "Authorization", "value": "Bearer {% response 'body', 'req_001', 'json', '$.token' %}" } ],
+      "authentication": {},
+      "metaSortKey": -1704920125000,
+      "isPrivate": false,
+      "settingStoreCookies": true,
+      "settingSendCookies": true,
+      "settingDisableRenderRequestBody": false,
+      "settingEncodeUrl": true,
+      "settingRebuildPath": true,
+      "settingFollowRedirects": "global",
+      "_type": "request"
+    },
+    {
+      "_id": "env_main_update",
+      "parentId": "env_main",
+      "modified": 1704920400003,
+      "created": 1704920400003,
+      "name": "Environment Extension",
+      "data": {
+        "perroId": "",
+        "solicitudId": ""
+      },
+      "_type": "environment"
+    }
+  ]
+}

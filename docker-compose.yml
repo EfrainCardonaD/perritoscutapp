@@ -1,32 +1,56 @@
 services:
-  spring-api-image:
-    image: perritoscut
-    container_name: contenedor-cut-spring
+  api:
+    build: .
+    image: perritoscutapp-backend:latest
+    container_name: perritoscutapp-backend
     ports:
-      - "80:8080"
-      - "443:8443"
+      - "8080:8080"
+    environment:
+      - SPRING_DATASOURCE_URL=jdbc:mysql://db:3306/perritoscutapp?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC
+      - SPRING_DATASOURCE_USERNAME=root
+      - SPRING_DATASOURCE_PASSWORD=${MYSQL_ROOT_PASSWORD:-root}
+      - SPRING_PROFILES_ACTIVE=${SPRING_PROFILES_ACTIVE:-dev}
+      - JWT_SECRET=${JWT_SECRET:-changeit}
+      - APP_CORS_ALLOWED_ORIGINS=${APP_CORS_ALLOWED_ORIGINS:-http://localhost:3000,http://192.168.100.2:3000}
+    depends_on:
+      db:
+        condition: service_healthy
     networks:
       - backend-network
-    environment:
-      - DB_URL=${DB_URL}
-      - DB_USERNAME=${DB_USERNAME}
-      - DB_PASSWORD=${DB_PASSWORD}
-      - JWT_SECRET=${JWT_SECRET}
-      - FLYWAY_PASSWORD=${FLYWAY_PASSWORD}
-      - FLYWAY_USER=${FLYWAY_USER}
 
-  histogramas-py:
-    image: app.py
-    container_name: histogramas-container
+  db:
+    image: mysql:8.4
+    container_name: perritoscutapp-mysql
+    restart: unless-stopped
+    environment:
+      - MYSQL_ROOT_PASSWORD=${MYSQL_ROOT_PASSWORD:-root}
+      - MYSQL_DATABASE=perritoscutapp
     ports:
-      - "5000:80"  # Exponer Flask en el puerto 5000 en el host
+      - "3306:3306"
+    healthcheck:
+      test: ["CMD-SHELL", "mysqladmin ping -h 127.0.0.1 -uroot -p$${MYSQL_ROOT_PASSWORD} --silent"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    volumes:
+      - mysql-data:/var/lib/mysql
     networks:
       - backend-network
-    environment:
-      - DB_URL_PYTHON=${DB_URL_PYTHON}
-      - DB_USERNAME=${DB_USERNAME}
-      - DB_PASSWORD=${DB_PASSWORD}
+
+  front:
+    build: ./front
+    image: perritoscutapp-frontend:latest
+    container_name: perritoscutapp-frontend
+    ports:
+      - "3000:80"
+    depends_on:
+      - api
+    networks:
+      - backend-network
 
 networks:
   backend-network:
     driver: bridge
+
+volumes:
+  mysql-data:

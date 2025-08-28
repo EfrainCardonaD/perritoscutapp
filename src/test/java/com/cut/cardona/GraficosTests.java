@@ -2,17 +2,20 @@ package com.cut.cardona;
 
 import com.cut.cardona.modelo.usuarios.RepositorioUsuario;
 import com.cut.cardona.modelo.usuarios.Usuario;
+import lombok.RequiredArgsConstructor;
 import org.junit.jupiter.api.Test;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.security.core.userdetails.UserDetails;
+import org.springframework.test.context.junit.jupiter.SpringJUnitConfig;
 
 import java.util.Optional;
 
 @SpringBootTest
-class GraficosTests {
-    @Autowired
-    private RepositorioUsuario repositorioUsuario;
+@SpringJUnitConfig
+@RequiredArgsConstructor // ✅ Constructor injection incluso en tests
+class PerritoscutappTests {
+
+    // ✅ Constructor injection - mejor práctica incluso en tests
+    private final RepositorioUsuario repositorioUsuario;
 
     @Test
     void contextLoads() {

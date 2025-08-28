@@ -4,12 +4,9 @@ import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 
 @SpringBootApplication
-public class Graficos {
+public class CutApplication {
 
     public static void main(String[] args) {
-        SpringApplication.run(Graficos.class, args);
-
-
+        SpringApplication.run(CutApplication.class, args);
     }
-
 }
