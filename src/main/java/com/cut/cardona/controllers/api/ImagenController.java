@@ -18,6 +18,7 @@ import java.util.*;
 import com.cut.cardona.infra.storage.ImageStorageService;
 import com.cut.cardona.infra.storage.UploadResult;
 import com.cut.cardona.infra.storage.StorageConfig;
+import com.cut.cardona.modelo.dto.common.RestResponse;
 
 @RestController
 @RequestMapping("/api/imagenes")
@@ -26,6 +27,8 @@ import com.cut.cardona.infra.storage.StorageConfig;
 @Tag(name = "Imágenes", description = "Gestión de imágenes del sistema")
 @Import(StorageConfig.class)
 public class ImagenController {
+
+    private static final int MAX_DOG_IMAGES = 5;
 
     private final ImageStorageService imageStorageService;
 
@@ -46,9 +49,17 @@ public class ImagenController {
     @Operation(summary = "Subir imagen de perro", description = "Sube una imagen y devuelve su id (UUID) para asociarla con un perro")
     @ApiResponse(responseCode = "200", description = "Imagen subida")
     @PostMapping(value = "/perritos", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
-    public ResponseEntity<Map<String, Object>> uploadImagenPerro(@RequestPart("file") MultipartFile file) {
+    public ResponseEntity<?> uploadImagenPerro(
+            @RequestPart("file") MultipartFile file,
+            @RequestHeader(value = "X-Dog-Images-Count", required = false) Integer countHdr,
+            @RequestParam(value = "count", required = false) Integer countParam) {
+        // Validación temprana: si el cliente indica que ya alcanzó el límite, rechazar antes de tocar el storage
+        Integer count = countHdr != null ? countHdr : countParam;
+        if (count != null && count >= MAX_DOG_IMAGES) {
+            return ResponseEntity.status(422).body(RestResponse.error("Solo se permiten " + MAX_DOG_IMAGES + " imágenes por perro"));
+        }
         if (file == null || file.isEmpty()) {
-            return ResponseEntity.badRequest().body(Map.of("error", "Archivo vacío"));
+            return ResponseEntity.badRequest().body(RestResponse.error("Archivo vacío"));
         }
         try {
             UploadResult result = imageStorageService.uploadDogImage(file);
@@ -58,12 +69,12 @@ public class ImagenController {
             resp.put("contentType", result.getContentType());
             resp.put("size", result.getSize());
             resp.put("url", result.getUrl());
-            return ResponseEntity.ok(resp);
+            return ResponseEntity.ok(RestResponse.success("Imagen subida", resp));
         } catch (IllegalArgumentException ex) {
-            return ResponseEntity.badRequest().body(Map.of("error", ex.getMessage()));
+            return ResponseEntity.badRequest().body(RestResponse.error(ex.getMessage()));
         } catch (Exception e) {
             log.error("Error subiendo imagen de perro", e);
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(Map.of("error", "No se pudo guardar la imagen"));
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(RestResponse.error("No se pudo guardar la imagen"));
         }
     }
 

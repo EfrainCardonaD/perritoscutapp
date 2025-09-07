@@ -31,6 +31,7 @@ import java.util.UUID;
 @RequiredArgsConstructor
 public class PerroService {
 
+    private static final int MAX_IMGS = 5;
     private final RepositorioPerro repositorioPerro;
     private final RepositorioImagenPerro repositorioImagenPerro;
     private final RepositorioUsuario repositorioUsuario;
@@ -70,8 +71,17 @@ public class PerroService {
         if (req.imagenes() == null || req.imagenes().isEmpty()) {
             throw new UnprocessableEntityException("Debe incluir al menos una imagen");
         }
-        if (req.imagenes().size() > 5) {
-            throw new UnprocessableEntityException("Solo se permiten hasta 5 imágenes por perro");
+        if (req.imagenes().size() > MAX_IMGS) {
+            // Cleanup de imágenes sobrantes (índices >= MAX_IMGS)
+            for (int i = MAX_IMGS; i < req.imagenes().size(); i++) {
+                try {
+                    var extra = req.imagenes().get(i);
+                    if (extra != null && extra.id() != null) {
+                        imageStorageService.deleteDogImage(extra.id());
+                    }
+                } catch (Exception ignored) {}
+            }
+            throw new UnprocessableEntityException("Solo se permiten hasta " + MAX_IMGS + " imágenes por perro");
         }
         // Validaciones de negocio previas a guardar nada
         long principales = req.imagenes().stream().filter(i -> Boolean.TRUE.equals(i.principal())).count();

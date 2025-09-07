@@ -13,4 +13,9 @@ public interface ImageStorageService {
     String resolveDogImagePublicUrl(String id);
 
     String resolveProfileImagePublicUrl(String id);
+
+    // Nuevo: borrar imagen de perro por id (public_id)
+    default void deleteDogImage(String id) {
+        // implementación por defecto no-op
+    }
 }

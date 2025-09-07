@@ -101,4 +101,14 @@ public class CloudinaryImageStorageService implements ImageStorageService {
                 .transformation(new Transformation().gravity("auto").crop("fill").aspectRatio("1:1"))
                 .generate(publicId);
     }
+
+    @Override
+    public void deleteDogImage(String id) {
+        try {
+            String publicId = perrosFolder + "/" + id;
+            cloudinary.uploader().destroy(publicId, ObjectUtils.asMap("resource_type", "image"));
+        } catch (Exception ex) {
+            log.warn("No se pudo eliminar imagen en Cloudinary id={}: {}", id, ex.getMessage());
+        }
+    }
 }
