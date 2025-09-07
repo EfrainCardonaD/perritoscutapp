@@ -31,7 +31,7 @@ public class SecurityConfiguration {
 
     private final SecurityFilter securityFilter;
 
-    @Value("${app.cors.allowed-origins:http://localhost:3000,http://192.168.100.2:3000}")
+    @Value("${app.cors.allowed-origins:http://localhost:3000,http://192.168.100.2:3000,https://perritoscut-app-front.vercel.app}")
     private String allowedOriginsCsv;
 
     @Bean
@@ -57,8 +57,8 @@ public class SecurityConfiguration {
                         // Catálogo público de perros
                         .requestMatchers(HttpMethod.GET, "/api/perros/catalogo").authenticated()
                         // Imágenes de perros SOLO para usuarios autenticados con rol explícito
-                        .requestMatchers(HttpMethod.GET, "/api/imagenes/perritos/").authenticated()
-                        .requestMatchers(HttpMethod.HEAD, "/api/imagenes/perritos/").authenticated()
+                        .requestMatchers(HttpMethod.GET, "/api/imagenes/perritos/**").authenticated()
+                        .requestMatchers(HttpMethod.HEAD, "/api/imagenes/perritos/**").authenticated()
                         .requestMatchers("/swagger-ui.html", "/v3/api-docs/**", "/swagger-ui/**").permitAll()
                         .requestMatchers("/actuator/health/**", "/actuator/info").permitAll()
                         .anyRequest().authenticated()

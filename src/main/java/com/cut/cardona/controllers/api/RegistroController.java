@@ -26,6 +26,7 @@ import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
 import jakarta.validation.Valid;
+
 import java.security.Principal;
 import java.util.Map;
 
@@ -52,7 +53,7 @@ public class RegistroController {
 
     @GetMapping("/registro")
     public String mostrarFormularioRegistro(Model model) {
-        model.addAttribute("registroUsuario", new DtoRegistroUsuario("","","","","",false));
+        model.addAttribute("registroUsuario", new DtoRegistroUsuario("", "", "", "", "", false));
         return "registro";
     }
 
@@ -84,8 +85,8 @@ public class RegistroController {
      * ✅ REGISTRO BÁSICO - Usando DTO con validaciones Bean Validation
      */
     @Operation(
-        summary = "Registro básico de usuario (JSON)",
-        description = "Registra un nuevo usuario con datos básicos enviados como JSON desde el frontend"
+            summary = "Registro básico de usuario (JSON)",
+            description = "Registra un nuevo usuario con datos básicos enviados como JSON desde el frontend"
     )
     @ApiResponse(responseCode = "201", description = "Usuario registrado exitosamente")
     @ApiResponse(responseCode = "400", description = "Datos inválidos o usuario ya existe")
@@ -102,8 +103,8 @@ public class RegistroController {
 
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(RestResponse.success(
-                    "Usuario registrado. Revisa tu correo para verificar la cuenta.",
-                    userData
+                        "Usuario registrado. Revisa tu correo para verificar la cuenta.",
+                        userData
                 ));
     }
 
@@ -111,8 +112,8 @@ public class RegistroController {
      * ✅ REGISTRO COMPLETO - Usando DTO con validaciones Bean Validation
      */
     @Operation(
-        summary = "Registro completo de usuario con perfil",
-        description = "Registra un nuevo usuario con toda la información básica y de perfil en una sola operación"
+            summary = "Registro completo de usuario con perfil",
+            description = "Registra un nuevo usuario con toda la información básica y de perfil en una sola operación"
     )
     @ApiResponse(responseCode = "201", description = "Usuario registrado exitosamente")
     @ApiResponse(responseCode = "400", description = "Datos inválidos o usuario ya existe")
@@ -126,20 +127,20 @@ public class RegistroController {
         DtoPerfilCompleto perfilCompleto = registroService.registroCompleto(request);
 
         Map<String, Object> userData = Map.of(
-            "userName", perfilCompleto.userName(),
-            "email", perfilCompleto.email(),
-            "nombreReal", perfilCompleto.nombreReal(),
-            "telefono", perfilCompleto.telefono(),
-            "tieneImagenPerfil", perfilCompleto.fotoPerfilUrl() != null,
-            "fotoPerfilUrl", perfilCompleto.fotoPerfilUrl() != null ? perfilCompleto.fotoPerfilUrl() : ""
+                "userName", perfilCompleto.userName(),
+                "email", perfilCompleto.email(),
+                "nombreReal", perfilCompleto.nombreReal(),
+                "telefono", perfilCompleto.telefono(),
+                "tieneImagenPerfil", perfilCompleto.fotoPerfilUrl() != null,
+                "fotoPerfilUrl", perfilCompleto.fotoPerfilUrl() != null ? perfilCompleto.fotoPerfilUrl() : ""
         );
 
         log.info("Usuario con perfil completo registrado (pendiente de verificación): {}", perfilCompleto.userName());
 
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(RestResponse.success(
-                    "Usuario registrado con perfil. Revisa tu correo para verificar la cuenta.",
-                    userData
+                        "Usuario registrado con perfil. Revisa tu correo para verificar la cuenta.",
+                        userData
                 ));
     }
 
@@ -147,8 +148,8 @@ public class RegistroController {
      * ✅ REGISTRO COMPLETO CON IMAGEN - Multipart/form-data
      */
     @Operation(
-        summary = "Registro completo con imagen de perfil",
-        description = "Registra un nuevo usuario con perfil completo incluyendo imagen"
+            summary = "Registro completo con imagen de perfil",
+            description = "Registra un nuevo usuario con perfil completo incluyendo imagen"
     )
     @PostMapping(value = "/registro-completo", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     @ResponseBody
@@ -161,20 +162,20 @@ public class RegistroController {
         DtoPerfilCompleto perfilCompleto = registroService.registroCompletoConImagen(request, fotoPerfil);
 
         Map<String, Object> userData = Map.of(
-            "userName", perfilCompleto.userName(),
-            "email", perfilCompleto.email(),
-            "nombreReal", perfilCompleto.nombreReal(),
-            "telefono", perfilCompleto.telefono(),
-            "tieneImagenPerfil", perfilCompleto.fotoPerfilUrl() != null,
-            "fotoPerfilUrl", perfilCompleto.fotoPerfilUrl() != null ? perfilCompleto.fotoPerfilUrl() : ""
+                "userName", perfilCompleto.userName(),
+                "email", perfilCompleto.email(),
+                "nombreReal", perfilCompleto.nombreReal(),
+                "telefono", perfilCompleto.telefono(),
+                "tieneImagenPerfil", perfilCompleto.fotoPerfilUrl() != null,
+                "fotoPerfilUrl", perfilCompleto.fotoPerfilUrl() != null ? perfilCompleto.fotoPerfilUrl() : ""
         );
 
         log.info("Usuario con perfil completo e imagen registrado (pendiente de verificación): {}", perfilCompleto.userName());
 
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(RestResponse.success(
-                    "Usuario registrado con perfil e imagen. Revisa tu correo para verificar la cuenta.",
-                    userData
+                        "Usuario registrado con perfil e imagen. Revisa tu correo para verificar la cuenta.",
+                        userData
                 ));
     }
 
@@ -182,8 +183,8 @@ public class RegistroController {
      * ✅ VALIDACIÓN PASO 1 - Usando DTO con Bean Validation
      */
     @Operation(
-        summary = "Validar datos del paso 1",
-        description = "Valida que el usuario y email no existan en la base de datos antes de proceder al paso 2"
+            summary = "Validar datos del paso 1",
+            description = "Valida que el usuario y email no existan en la base de datos antes de proceder al paso 2"
     )
     @PostMapping(value = "/validar-paso1", consumes = MediaType.APPLICATION_JSON_VALUE)
     @ResponseBody
@@ -195,7 +196,7 @@ public class RegistroController {
         registroService.validarPaso1(request);
 
         return ResponseEntity.ok(
-            RestResponse.success("Datos válidos, puede proceder al paso 2")
+                RestResponse.success("Datos válidos, puede proceder al paso 2")
         );
     }
 
@@ -203,8 +204,8 @@ public class RegistroController {
      * ✅ VALIDACIÓN PASO 2 - Usando DTO con Bean Validation
      */
     @Operation(
-        summary = "Validar datos del paso 2",
-        description = "Valida que los datos de perfil sean correctos y únicos"
+            summary = "Validar datos del paso 2",
+            description = "Valida que los datos de perfil sean correctos y únicos"
     )
     @PostMapping(value = "/validar-paso2", consumes = MediaType.APPLICATION_JSON_VALUE)
     @ResponseBody
@@ -216,7 +217,7 @@ public class RegistroController {
         registroService.validarPaso2(request);
 
         return ResponseEntity.ok(
-            RestResponse.success("Datos de perfil válidos")
+                RestResponse.success("Datos de perfil válidos")
         );
     }
 
@@ -244,8 +245,8 @@ public class RegistroController {
     // =====================================
 
     @Operation(
-        summary = "Obtener perfil completo",
-        description = "Obtiene toda la información del perfil del usuario autenticado"
+            summary = "Obtener perfil completo",
+            description = "Obtiene toda la información del perfil del usuario autenticado"
     )
     @GetMapping("/perfil/completo")
     @ResponseBody
@@ -262,8 +263,8 @@ public class RegistroController {
     }
 
     @Operation(
-        summary = "Actualizar imagen de perfil",
-        description = "Actualiza o establece la imagen de perfil del usuario autenticado"
+            summary = "Actualizar imagen de perfil",
+            description = "Actualiza o establece la imagen de perfil del usuario autenticado"
     )
     @PostMapping(value = "/perfil/imagen", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     @ResponseBody
@@ -274,8 +275,8 @@ public class RegistroController {
             String usuarioId = principal.getName();
             String urlImagen = perfilUsuarioService.actualizarImagenPerfil(usuarioId, imagen);
             return ResponseEntity.ok(Map.of(
-                "mensaje", "Imagen de perfil actualizada exitosamente",
-                "urlImagen", urlImagen
+                    "mensaje", "Imagen de perfil actualizada exitosamente",
+                    "urlImagen", urlImagen
             ));
         } catch (IllegalArgumentException e) {
             return ResponseEntity.badRequest()
@@ -287,8 +288,8 @@ public class RegistroController {
     }
 
     @Operation(
-        summary = "Obtener perfil por ID de usuario",
-        description = "Obtiene el perfil de un usuario específico (solo para administradores)"
+            summary = "Obtener perfil por ID de usuario",
+            description = "Obtiene el perfil de un usuario específico (solo para administradores)"
     )
     @GetMapping("/perfil/usuario/{usuarioId}")
     @ResponseBody

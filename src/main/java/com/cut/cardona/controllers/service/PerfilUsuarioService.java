@@ -1,5 +1,7 @@
 package com.cut.cardona.controllers.service;
 
+import com.cut.cardona.infra.storage.ImageStorageService;
+import com.cut.cardona.infra.storage.UploadResult;
 import com.cut.cardona.modelo.dto.perfil.DtoPerfilCompleto;
 import com.cut.cardona.modelo.dto.registro.DtoRegistroCompletoRequest;
 import com.cut.cardona.modelo.imagenes.ImagenPerfil;
@@ -15,13 +17,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
-import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
-import java.nio.file.StandardCopyOption;
 import java.util.Optional;
-import java.util.UUID;
 
 @Service
 @RequiredArgsConstructor
@@ -32,9 +28,9 @@ public class PerfilUsuarioService {
     private final RepositorioPerfilUsuario repositorioPerfilUsuario;
     private final RepositorioImagenPerfil repositorioImagenPerfil;
     private final PasswordEncoder passwordEncoder;
+    private final ImageStorageService imageStorageService;
 
-    private static final String UPLOAD_DIR = "uploads/perfiles/";
-    private static final long MAX_FILE_SIZE = 5_242_880L; // 5MB
+    private static final long MAX_FILE_SIZE = 15L * 1024 * 1024; // 15MB
 
     /**
      * Registra un usuario con información extendida de perfil usando el DTO unificado
@@ -121,41 +117,26 @@ public class PerfilUsuarioService {
     }
 
     /**
-     * Procesa y guarda una imagen de perfil
+     * Procesa y guarda una imagen de perfil con Cloudinary
      */
-    @Transactional // ✅ CRÍTICO: Agregar @Transactional para rollback automático
+    @Transactional
     protected ImagenPerfil procesarImagenPerfil(MultipartFile archivo, PerfilUsuario perfil) {
+        // Validaciones básicas; límites estrictos se validan en el storage service
+        validarArchivo(archivo);
         try {
-            // Validaciones
-            validarArchivo(archivo);
-
-            // Crear directorio si no existe
-            Path uploadPath = Paths.get(UPLOAD_DIR);
-            if (!Files.exists(uploadPath)) {
-                Files.createDirectories(uploadPath);
-            }
-
-            // Generar nombre único para el archivo
-            String extension = obtenerExtension(archivo.getOriginalFilename());
-            String nombreArchivo = UUID.randomUUID() + "." + extension;
-            Path rutaArchivo = uploadPath.resolve(nombreArchivo);
-
-            // Guardar archivo
-            Files.copy(archivo.getInputStream(), rutaArchivo, StandardCopyOption.REPLACE_EXISTING);
-
-            // Crear entidad ImagenPerfil
+            UploadResult up = imageStorageService.uploadProfileImage(archivo);
             ImagenPerfil imagenPerfil = new ImagenPerfil();
-            imagenPerfil.setPerfilUsuario(perfil); // ✅ CORRECCIÓN: usar la relación JPA en lugar del ID
-            imagenPerfil.setNombreArchivo(nombreArchivo);
-            imagenPerfil.setRutaArchivo(rutaArchivo.toString());
-            imagenPerfil.setTipoMime(archivo.getContentType());
-            imagenPerfil.setTamanoBytes(archivo.getSize());
-            imagenPerfil.setUrlPublica("/api/imagenes/perfil/" + nombreArchivo);
-
+            imagenPerfil.setPerfilUsuario(perfil);
+            imagenPerfil.setNombreArchivo(up.getFilename());
+            // Usaremos la URL como ruta para cumplir no-null en esquema existente
+            imagenPerfil.setRutaArchivo(up.getUrl());
+            imagenPerfil.setTipoMime(up.getContentType());
+            imagenPerfil.setTamanoBytes(up.getSize());
+            imagenPerfil.setUrlPublica(up.getUrl());
+            imagenPerfil.setActiva(true);
             return repositorioImagenPerfil.save(imagenPerfil);
-
-        } catch (IOException e) {
-            throw new RuntimeException("Error al procesar la imagen de perfil", e);
+        } catch (Exception e) {
+            throw new RuntimeException("Error al subir la imagen de perfil", e);
         }
     }
 
@@ -165,7 +146,7 @@ public class PerfilUsuarioService {
     private DtoPerfilCompleto construirDtoPerfilCompleto(Usuario usuario, PerfilUsuario perfil, ImagenPerfil imagen) {
         return new DtoPerfilCompleto(
             usuario.getId(),
-            usuario.getUsername(), // Corregido: era getUserName()
+            usuario.getUsername(),
             usuario.getEmail(),
             usuario.getRol(),
             usuario.getActivo(),
@@ -188,22 +169,19 @@ public class PerfilUsuarioService {
     }
 
     /**
-     * Valida el archivo de imagen
+     * Valida el archivo de imagen (15MB, tipos comunes)
      */
     private void validarArchivo(MultipartFile archivo) {
-        if (archivo.isEmpty()) {
+        if (archivo == null || archivo.isEmpty()) {
             throw new IllegalArgumentException("El archivo no puede estar vacío");
         }
-
         if (archivo.getSize() > MAX_FILE_SIZE) {
-            throw new IllegalArgumentException("El archivo no puede exceder 5MB");
+            throw new IllegalArgumentException("El archivo no puede exceder 15MB");
         }
-
         String contentType = archivo.getContentType();
         if (contentType == null || !contentType.startsWith("image/")) {
             throw new IllegalArgumentException("El archivo debe ser una imagen");
         }
-
         if (!contentType.equals("image/jpeg") &&
             !contentType.equals("image/png") &&
             !contentType.equals("image/webp") &&
@@ -213,23 +191,12 @@ public class PerfilUsuarioService {
     }
 
     /**
-     * Obtiene la extensión del archivo
-     */
-    private String obtenerExtension(String nombreArchivo) {
-        if (nombreArchivo == null || !nombreArchivo.contains(".")) {
-            return "jpg";
-        }
-        return nombreArchivo.substring(nombreArchivo.lastIndexOf(".") + 1).toLowerCase();
-    }
-
-    /**
-     * Verifica si un teléfono ya está registrado
+     * Verifica si un teléfono ya está registrado en la base de datos
      */
     public boolean existeTelefono(String telefono) {
         if (telefono == null || telefono.trim().isEmpty()) {
             return false;
         }
-        // Limpiar el teléfono antes de buscar
         String telefonoLimpio = telefono.replaceAll("[\\s()\\-]", "");
         return repositorioPerfilUsuario.existsByTelefono(telefonoLimpio);
     }

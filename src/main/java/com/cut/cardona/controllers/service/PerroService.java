@@ -1,5 +1,6 @@
 package com.cut.cardona.controllers.service;
 
+import com.cut.cardona.infra.storage.ImageStorageService;
 import com.cut.cardona.modelo.dto.perros.CrearPerroRequest;
 import com.cut.cardona.modelo.dto.perros.DtoPerro;
 import com.cut.cardona.modelo.perros.ImagenPerro;
@@ -18,12 +19,7 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.beans.factory.annotation.Value;
 
-import java.nio.file.DirectoryStream;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.sql.Timestamp;
 import java.util.List;
 import java.util.Optional;
@@ -33,12 +29,10 @@ import java.util.UUID;
 @RequiredArgsConstructor
 public class PerroService {
 
-    @Value("${app.storage.perros-dir:uploads/perritos}")
-    private String perrosUploadDir;
-
     private final RepositorioPerro repositorioPerro;
     private final RepositorioImagenPerro repositorioImagenPerro;
     private final RepositorioUsuario repositorioUsuario;
+    private final ImageStorageService imageStorageService;
 
     @Transactional(readOnly = true)
     public List<DtoPerro> catalogoPublico() {
@@ -74,6 +68,9 @@ public class PerroService {
         if (req.imagenes() == null || req.imagenes().isEmpty()) {
             throw new UnprocessableEntityException("Debe incluir al menos una imagen");
         }
+        if (req.imagenes().size() > 5) {
+            throw new UnprocessableEntityException("Solo se permiten hasta 5 imágenes por perro");
+        }
         String username = SecurityContextHolder.getContext().getAuthentication().getName();
         Usuario usuario = repositorioUsuario.findByUserName(username).orElseThrow();
 
@@ -90,7 +87,6 @@ public class PerroService {
                 .estadoAdopcion(PerroEstadoAdopcion.PENDIENTE)
                 .estadoRevision(PerroEstadoRevision.PENDIENTE)
                 .usuario(usuario)
-
                 .build();
 
         repositorioPerro.save(perro);
@@ -103,16 +99,14 @@ public class PerroService {
             }
             principalYaAsignada = principalYaAsignada || principal;
 
-            // Validar existencia de archivo local con el id dado (cualquier extensión)
             String imagenId = imgReq.id();
-            if (!existeArchivoLocalPorId(imagenId)) {
-                throw new UnprocessableEntityException("La imagen con id=" + imagenId + " no existe en el almacenamiento local");
-            }
+            // Resolver URL pública desde Cloudinary para almacenarla en BD
+            String publicUrl = imageStorageService.resolveDogImagePublicUrl(imagenId);
 
             ImagenPerro img = ImagenPerro.builder()
                     .id(imagenId)
                     .perro(perro)
-                    .url(imagenId) // ya no guardamos URL, se servirá por id
+                    .url(publicUrl)
                     .descripcion(imgReq.descripcion())
                     .principal(principal)
                     .fechaSubida(new Timestamp(System.currentTimeMillis()))
@@ -120,21 +114,6 @@ public class PerroService {
             repositorioImagenPerro.save(img);
         }
         return new DtoPerro(perro);
-    }
-
-    private boolean existeArchivoLocalPorId(String id) {
-        try {
-            Path dir = Paths.get(perrosUploadDir);
-            if (!Files.exists(dir)) return false;
-            try (DirectoryStream<Path> stream = Files.newDirectoryStream(dir, id + ".*")) {
-                for (Path p : stream) {
-                    if (Files.isRegularFile(p) && Files.isReadable(p)) return true;
-                }
-            }
-            return false;
-        } catch (Exception e) {
-            return false;
-        }
     }
 
     @PreAuthorize("hasAnyRole('ADMIN','REVIEWER')")
