@@ -1,6 +1,7 @@
 package com.cut.cardona.controllers.api;
 
 import com.cut.cardona.controllers.service.PerroService;
+import com.cut.cardona.modelo.dto.common.RestResponse;
 import com.cut.cardona.modelo.dto.perros.CrearPerroRequest;
 import com.cut.cardona.modelo.dto.perros.DtoPerro;
 import jakarta.validation.Valid;
@@ -9,6 +10,7 @@ import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
@@ -24,7 +26,7 @@ public class PerroController {
     private final PerroService perroService;
 
     @GetMapping("/perros/catalogo")
-    public ResponseEntity<List<DtoPerro>> catalogo(
+    public ResponseEntity<RestResponse<List<DtoPerro>>> catalogo(
             @Pattern(regexp = "Macho|Hembra", message = "Sexo debe ser 'Macho' o 'Hembra'")
             @RequestParam(value = "sexo", required = false) String sexo,
             @Pattern(regexp = "Pequeño|Mediano|Grande", message = "Tamaño debe ser 'Pequeño','Mediano' o 'Grande'")
@@ -35,32 +37,38 @@ public class PerroController {
             @RequestParam(value = "page", required = false) Integer page,
             @Min(value = 1, message = "size debe ser >= 1") @Max(value = 100, message = "size no debe superar 100")
             @RequestParam(value = "size", required = false) Integer size) {
-        return ResponseEntity.ok(perroService.catalogoPublico(sexo, tamano, ubicacion, page, size));
-
+        List<DtoPerro> data = perroService.catalogoPublico(sexo, tamano, ubicacion, page, size);
+        return ResponseEntity.ok(RestResponse.success("Catálogo cargado", data));
     }
 
     @GetMapping("/perros/mis")
-    public ResponseEntity<List<DtoPerro>> misPerros() {
-        return ResponseEntity.ok(perroService.perrosDelUsuarioActual());
+    public ResponseEntity<RestResponse<List<DtoPerro>>> misPerros() {
+        List<DtoPerro> data = perroService.perrosDelUsuarioActual();
+        return ResponseEntity.ok(RestResponse.success("Perros del usuario", data));
     }
 
     @PostMapping("/perros")
-    public ResponseEntity<DtoPerro> crear(@Valid @RequestBody CrearPerroRequest req) {
-        return ResponseEntity.ok(perroService.crearPerro(req));
+    public ResponseEntity<RestResponse<DtoPerro>> crear(@Valid @RequestBody CrearPerroRequest req) {
+        DtoPerro creado = perroService.crearPerro(req);
+        return ResponseEntity.status(HttpStatus.CREATED)
+                .body(RestResponse.success("Perro creado correctamente", creado));
     }
 
     @PostMapping("/admin/perros/{id}/aprobar")
-    public ResponseEntity<DtoPerro> aprobar(@PathVariable("id") String id) {
-        return ResponseEntity.ok(perroService.aprobarPerro(id));
+    public ResponseEntity<RestResponse<DtoPerro>> aprobar(@PathVariable("id") String id) {
+        DtoPerro dto = perroService.aprobarPerro(id);
+        return ResponseEntity.ok(RestResponse.success("Perro aprobado", dto));
     }
 
     @PostMapping("/admin/perros/{id}/rechazar")
-    public ResponseEntity<DtoPerro> rechazar(@PathVariable("id") String id) {
-        return ResponseEntity.ok(perroService.rechazarPerro(id));
+    public ResponseEntity<RestResponse<DtoPerro>> rechazar(@PathVariable("id") String id) {
+        DtoPerro dto = perroService.rechazarPerro(id);
+        return ResponseEntity.ok(RestResponse.success("Perro rechazado", dto));
     }
 
     @PatchMapping("/admin/perros/{id}/estado")
-    public ResponseEntity<DtoPerro> cambiarEstado(@PathVariable("id") String id, @RequestParam("estado") String estado) {
-        return ResponseEntity.ok(perroService.cambiarEstadoAdopcion(id, estado));
+    public ResponseEntity<RestResponse<DtoPerro>> cambiarEstado(@PathVariable("id") String id, @RequestParam("estado") String estado) {
+        DtoPerro dto = perroService.cambiarEstadoAdopcion(id, estado);
+        return ResponseEntity.ok(RestResponse.success("Estado de adopción actualizado", dto));
     }
 }

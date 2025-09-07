@@ -21,8 +21,10 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.sql.Timestamp;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
 
 @Service
@@ -53,8 +55,7 @@ public class PerroService {
     public List<DtoPerro> perrosDelUsuarioActual() {
         String username = SecurityContextHolder.getContext().getAuthentication().getName();
         Optional<Usuario> usuarioOpt = repositorioUsuario.findByUserName(username);
-        if (usuarioOpt.isEmpty()) return List.of();
-        return repositorioPerro.findByUsuarioId(usuarioOpt.get().getId()).stream().map(DtoPerro::new).toList();
+        return usuarioOpt.map(usuario -> repositorioPerro.findByUsuarioId(usuario.getId()).stream().map(DtoPerro::new).toList()).orElseGet(List::of);
     }
 
     @PreAuthorize("hasAnyRole('ADMIN','REVIEWER')")
@@ -64,6 +65,7 @@ public class PerroService {
     }
 
     @PreAuthorize("hasRole('USER')")
+    @Transactional
     public DtoPerro crearPerro(CrearPerroRequest req) {
         if (req.imagenes() == null || req.imagenes().isEmpty()) {
             throw new UnprocessableEntityException("Debe incluir al menos una imagen");
@@ -71,6 +73,26 @@ public class PerroService {
         if (req.imagenes().size() > 5) {
             throw new UnprocessableEntityException("Solo se permiten hasta 5 imágenes por perro");
         }
+        // Validaciones de negocio previas a guardar nada
+        long principales = req.imagenes().stream().filter(i -> Boolean.TRUE.equals(i.principal())).count();
+        if (principales != 1) {
+            throw new UnprocessableEntityException("Debe marcar exactamente una imagen como principal");
+        }
+        Set<String> vistos = new HashSet<>();
+        for (var imgReq : req.imagenes()) {
+            String imagenId = imgReq.id();
+            if (imagenId == null || imagenId.isBlank()) {
+                throw new UnprocessableEntityException("ID de imagen faltante");
+            }
+            // Validar UUID
+            try { UUID.fromString(imagenId); } catch (IllegalArgumentException ex) {
+                throw new UnprocessableEntityException("ID de imagen inválido: " + imagenId);
+            }
+            if (!vistos.add(imagenId)) {
+                throw new UnprocessableEntityException("IDs de imagen duplicados");
+            }
+        }
+
         String username = SecurityContextHolder.getContext().getAuthentication().getName();
         Usuario usuario = repositorioUsuario.findByUserName(username).orElseThrow();
 
