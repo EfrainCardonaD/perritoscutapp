@@ -6,7 +6,6 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
-import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.web.servlet.MockMvc;
 
@@ -24,10 +23,8 @@ class ImagenControllerSecurityTest {
     @Autowired
     private MockMvc mockMvc;
 
-    @MockBean
     TokenService tokenService;
 
-    @MockBean
     RepositorioUsuario repositorioUsuario;
 
     private final Path uploadDir = Paths.get("uploads/perritos");
