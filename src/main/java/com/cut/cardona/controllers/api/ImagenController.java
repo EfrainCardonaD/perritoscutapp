@@ -19,6 +19,10 @@ import com.cut.cardona.infra.storage.ImageStorageService;
 import com.cut.cardona.infra.storage.UploadResult;
 import com.cut.cardona.infra.storage.StorageConfig;
 import com.cut.cardona.modelo.dto.common.RestResponse;
+import com.cut.cardona.modelo.imagenes.RepositorioImagenPerfil;
+import com.cut.cardona.modelo.imagenes.ImagenPerfil;
+import com.cut.cardona.security.CustomUserDetails;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 
 @RestController
 @RequestMapping("/api/imagenes")
@@ -31,6 +35,7 @@ public class ImagenController {
     private static final int MAX_DOG_IMAGES = 5;
 
     private final ImageStorageService imageStorageService;
+    private final RepositorioImagenPerfil repositorioImagenPerfil; // NUEVO
 
     private static final Map<String, String> MIME_TYPES = createMimeTypesMap();
 
@@ -127,25 +132,50 @@ public class ImagenController {
 
     // ====== IMÁGENES DE PERFIL (compat: filename -> id) ======
 
-    @Operation(summary = "Obtener imagen de perfil", description = "Redirige a la URL CDN de la imagen de perfil por nombre de archivo")
+    @Operation(summary = "Obtener imagen de perfil", description = "Redirige a la URL CDN de la imagen de perfil por nombre de archivo (requiere ser dueño o admin)")
     @ApiResponse(responseCode = "302", description = "Redirección a la URL pública de la imagen")
     @ApiResponse(responseCode = "400", description = "Nombre de archivo inválido")
+    @ApiResponse(responseCode = "401", description = "No autenticado")
+    @ApiResponse(responseCode = "403", description = "No autorizado")
+    @ApiResponse(responseCode = "404", description = "No encontrada")
     @GetMapping("/perfil/{filename:.+}")
-    public ResponseEntity<Void> obtenerImagenPerfil(@Parameter(description = "Nombre del archivo de imagen", required = true) @PathVariable String filename) {
+    public ResponseEntity<Void> obtenerImagenPerfil(
+            @Parameter(description = "Nombre del archivo de imagen", required = true) @PathVariable String filename,
+            @AuthenticationPrincipal CustomUserDetails userDetails) {
         String id = extraerId(filename);
         if (id == null) return ResponseEntity.badRequest().build();
+        if (userDetails == null) return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        var imagenOpt = repositorioImagenPerfil.findByIdWithUsuario(id);
+        if (imagenOpt.isEmpty()) return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
+        ImagenPerfil imagen = imagenOpt.get();
+        if (!estaAutorizadoImagenPerfil(userDetails, imagen)) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+        }
         String url = imageStorageService.resolveProfileImagePublicUrl(id);
         return ResponseEntity.status(HttpStatus.FOUND)
                 .header(HttpHeaders.LOCATION, url)
                 .build();
     }
 
-    @Operation(summary = "Verificar disponibilidad de imagen", description = "Verifica si una imagen de perfil existe sin descargarla (redirige a CDN)")
+    @Operation(summary = "Verificar disponibilidad de imagen", description = "HEAD de imagen de perfil (requiere ser dueño o admin)")
     @ApiResponse(responseCode = "302", description = "Redirección a la URL pública de la imagen")
+    @ApiResponse(responseCode = "400", description = "Nombre de archivo inválido")
+    @ApiResponse(responseCode = "401", description = "No autenticado")
+    @ApiResponse(responseCode = "403", description = "No autorizado")
+    @ApiResponse(responseCode = "404", description = "No encontrada")
     @RequestMapping(value = "/perfil/{filename:.+}", method = RequestMethod.HEAD)
-    public ResponseEntity<Void> verificarImagenPerfil(@PathVariable String filename) {
+    public ResponseEntity<Void> verificarImagenPerfil(
+            @PathVariable String filename,
+            @AuthenticationPrincipal CustomUserDetails userDetails) {
         String id = extraerId(filename);
         if (id == null) return ResponseEntity.badRequest().build();
+        if (userDetails == null) return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        var imagenOpt = repositorioImagenPerfil.findByIdWithUsuario(id);
+        if (imagenOpt.isEmpty()) return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
+        ImagenPerfil imagen = imagenOpt.get();
+        if (!estaAutorizadoImagenPerfil(userDetails, imagen)) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+        }
         String url = imageStorageService.resolveProfileImagePublicUrl(id);
         return ResponseEntity.status(HttpStatus.FOUND)
                 .header(HttpHeaders.LOCATION, url)
@@ -160,6 +190,14 @@ public class ImagenController {
         int dot = filename.lastIndexOf('.');
         String base = dot > 0 ? filename.substring(0, dot) : filename;
         return base.isBlank() ? null : base;
+    }
+
+    private boolean estaAutorizadoImagenPerfil(CustomUserDetails userDetails, ImagenPerfil imagen) {
+        if (userDetails == null || imagen == null) return false;
+        String ownerId = imagen.getPerfilUsuario().getUsuario().getId();
+        String requesterId = userDetails.getUsuario().getId();
+        if (ownerId != null && ownerId.equals(requesterId)) return true;
+        return userDetails.getAuthorities().stream().anyMatch(a -> "ROLE_ADMIN".equals(a.getAuthority()));
     }
 
     // Pequeño helper de proxy

@@ -63,10 +63,10 @@ public class AuthenticationService {
 
         } catch (DisabledException e) {
             log.warn("Authentication blocked (disabled/unverified) for user: {}", request.userName());
-            throw new ValidacionDeIntegridad("Verifica tu correo para iniciar sesión");
+            throw new ValidacionDeIntegridad(" Verifica tu correo para iniciar sesión");
         } catch (BadCredentialsException e) {
             log.warn("Failed authentication attempt for user: {}", request.userName());
-            throw new ValidacionDeIntegridad("Las credenciales proporcionadas son incorrectas. Verifica tu usuario y contraseña.");
+            throw new ValidacionDeIntegridad(" Las credenciales proporcionadas son incorrectas. Verifica tu usuario y contraseña.");
         }
     }
 

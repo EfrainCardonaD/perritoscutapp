@@ -65,7 +65,7 @@ public class MailService {
 
 
     private String buildUrl(String path, String token) {
-        String url = "http://192.168.100.2:3000";
+        String url = "https://www.perritoscut.online/";
         String base = trimTrailingSlash(url);
         if (!path.startsWith("/")) path = "/" + path;
         return base + path + "?token=" + token;

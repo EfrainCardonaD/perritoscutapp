@@ -52,8 +52,8 @@ public class SecurityConfiguration {
                                 "/api/forgot",
                                 "/api/reset",
                                 "/index").permitAll()
-                        .requestMatchers(HttpMethod.GET, "/api/imagenes/perfil/**").permitAll()
-                        .requestMatchers(HttpMethod.HEAD, "/api/imagenes/perfil/**").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/imagenes/perfil/**").authenticated()
+                        .requestMatchers(HttpMethod.HEAD, "/api/imagenes/perfil/**").authenticated()
                         // Catálogo público de perros
                         .requestMatchers(HttpMethod.GET, "/api/perros/catalogo").authenticated()
                         // Imágenes de perros SOLO para usuarios autenticados con rol explícito
