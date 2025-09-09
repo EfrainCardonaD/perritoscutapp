@@ -33,7 +33,7 @@ public class SecurityConfiguration {
 
     @Value("${app.cors.allowed-origins:http://localhost:3000,http://localhost:5173,http://192.168.100.2:3000,https://perritoscut-app-front.vercel.app,https://*.perritoscut.online}")
     private String allowedOriginsCsv;
-
+//test
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity httpSecurity) throws Exception {
         httpSecurity
