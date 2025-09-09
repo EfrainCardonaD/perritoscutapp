@@ -13,7 +13,6 @@ import com.cut.cardona.modelo.usuarios.RepositorioUsuario;
 import com.cut.cardona.modelo.usuarios.Usuario;
 import com.cut.cardona.errores.UnprocessableEntityException;
 import lombok.RequiredArgsConstructor;
-import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -37,7 +36,6 @@ public class PerroService {
     private final RepositorioImagenPerro repositorioImagenPerro;
     private final RepositorioUsuario repositorioUsuario;
     private final ImageStorageService imageStorageService;
-    private final ApplicationEventPublisher eventPublisher;
 
     @Transactional(readOnly = true)
     public List<DtoPerro> catalogoPublico() {
@@ -67,7 +65,7 @@ public class PerroService {
         return repositorioPerro.findPendientesRevision().stream().map(DtoPerro::new).toList();
     }
 
-    @PreAuthorize("hasRole('USER')")
+    @PreAuthorize("hasAnyRole('USER', 'ADMIN', 'REVIEWER')")
     @Transactional
     public DtoPerro crearPerro(CrearPerroRequest req) {
         if (req.imagenes() == null || req.imagenes().isEmpty()) {
@@ -168,10 +166,6 @@ public class PerroService {
         perro.setRevisadoPor(moderador);
         perro.setFechaRevision(new Timestamp(System.currentTimeMillis()));
         Perro saved = repositorioPerro.save(perro);
-        // Publicar evento si pasa a catálogo
-        if (saved.getEstadoRevision() == PerroEstadoRevision.APROBADO && saved.getEstadoAdopcion() == PerroEstadoAdopcion.DISPONIBLE) {
-            eventPublisher.publishEvent(new com.cut.cardona.event.PerroCatalogoNuevoEvent(saved.getId()));
-        }
         return new DtoPerro(saved);
     }
 
@@ -197,12 +191,6 @@ public class PerroService {
         }
         perro.setEstadoAdopcion(nuevo);
         Perro saved = repositorioPerro.save(perro);
-        boolean ahoraEnCatalogo = saved.getEstadoRevision() == PerroEstadoRevision.APROBADO && saved.getEstadoAdopcion() == PerroEstadoAdopcion.DISPONIBLE;
-        if (!estabaEnCatalogo && ahoraEnCatalogo) {
-            eventPublisher.publishEvent(new com.cut.cardona.event.PerroCatalogoNuevoEvent(saved.getId()));
-        } else if (estabaEnCatalogo && !ahoraEnCatalogo) {
-            eventPublisher.publishEvent(new com.cut.cardona.event.PerroCatalogoRemoveEvent(saved.getId()));
-        }
         return new DtoPerro(saved);
     }
 }

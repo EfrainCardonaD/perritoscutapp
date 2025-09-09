@@ -31,15 +31,14 @@ public class SecurityConfiguration {
 
     private final SecurityFilter securityFilter;
 
-    @Value("${app.cors.allowed-origins:http://localhost:3000,http://localhost:5173,http://192.168.100.2:3000,https://perritoscut-app-front.vercel.app,https://*.perritoscut.online}")
+    @Value("${app.cors.allowed-origins:http://localhost:3000,http://192.168.100.2:3000,https://perritoscut-app-front.vercel.app,https://*.perritoscut.online}")
     private String allowedOriginsCsv;
-//test
+
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity httpSecurity) throws Exception {
         httpSecurity
                 .csrf(AbstractHttpConfigurer::disable)
                 .authorizeHttpRequests(authorize -> authorize
-                        .requestMatchers("/ws/**").permitAll() // handshake WebSocket
                         .requestMatchers("/api/login").permitAll()
                         .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
                         .requestMatchers(HttpMethod.POST,
@@ -55,7 +54,9 @@ public class SecurityConfiguration {
                                 "/index").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/imagenes/perfil/**").authenticated()
                         .requestMatchers(HttpMethod.HEAD, "/api/imagenes/perfil/**").authenticated()
+                        // Catálogo público de perros
                         .requestMatchers(HttpMethod.GET, "/api/perros/catalogo").authenticated()
+                        // Imágenes de perros SOLO para usuarios autenticados con rol explícito
                         .requestMatchers(HttpMethod.GET, "/api/imagenes/perritos/**").authenticated()
                         .requestMatchers(HttpMethod.HEAD, "/api/imagenes/perritos/**").authenticated()
                         .requestMatchers("/swagger-ui.html", "/v3/api-docs/**", "/swagger-ui/**").permitAll()
