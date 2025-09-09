@@ -13,6 +13,7 @@ import com.cut.cardona.modelo.usuarios.RepositorioUsuario;
 import com.cut.cardona.modelo.usuarios.Usuario;
 import com.cut.cardona.errores.UnprocessableEntityException;
 import lombok.RequiredArgsConstructor;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -36,6 +37,7 @@ public class PerroService {
     private final RepositorioImagenPerro repositorioImagenPerro;
     private final RepositorioUsuario repositorioUsuario;
     private final ImageStorageService imageStorageService;
+    private final ApplicationEventPublisher eventPublisher;
 
     @Transactional(readOnly = true)
     public List<DtoPerro> catalogoPublico() {
@@ -159,9 +161,18 @@ public class PerroService {
         String username = SecurityContextHolder.getContext().getAuthentication().getName();
         Usuario moderador = repositorioUsuario.findByUserName(username).orElseThrow();
         perro.setEstadoRevision(PerroEstadoRevision.APROBADO);
+        // Si estaba pendiente de adopción, lo ponemos Disponible automáticamente
+        if (perro.getEstadoAdopcion() == PerroEstadoAdopcion.PENDIENTE) {
+            perro.setEstadoAdopcion(PerroEstadoAdopcion.DISPONIBLE);
+        }
         perro.setRevisadoPor(moderador);
         perro.setFechaRevision(new Timestamp(System.currentTimeMillis()));
-        return new DtoPerro(repositorioPerro.save(perro));
+        Perro saved = repositorioPerro.save(perro);
+        // Publicar evento si pasa a catálogo
+        if (saved.getEstadoRevision() == PerroEstadoRevision.APROBADO && saved.getEstadoAdopcion() == PerroEstadoAdopcion.DISPONIBLE) {
+            eventPublisher.publishEvent(new com.cut.cardona.event.PerroCatalogoNuevoEvent(saved.getId()));
+        }
+        return new DtoPerro(saved);
     }
 
     @PreAuthorize("hasAnyRole('ADMIN','REVIEWER')")
@@ -178,11 +189,20 @@ public class PerroService {
     @PreAuthorize("hasAnyRole('ADMIN','REVIEWER')")
     public DtoPerro cambiarEstadoAdopcion(String perroId, String estado) {
         Perro perro = repositorioPerro.findById(perroId).orElseThrow();
+        PerroEstadoAdopcion anterior = perro.getEstadoAdopcion();
+        boolean estabaEnCatalogo = perro.getEstadoRevision() == PerroEstadoRevision.APROBADO && anterior == PerroEstadoAdopcion.DISPONIBLE;
         PerroEstadoAdopcion nuevo = PerroEstadoAdopcion.fromLabel(estado);
         if (nuevo == PerroEstadoAdopcion.DISPONIBLE && perro.getEstadoRevision() != PerroEstadoRevision.APROBADO) {
             throw new UnprocessableEntityException("Solo perros aprobados pueden estar disponibles");
         }
         perro.setEstadoAdopcion(nuevo);
-        return new DtoPerro(repositorioPerro.save(perro));
+        Perro saved = repositorioPerro.save(perro);
+        boolean ahoraEnCatalogo = saved.getEstadoRevision() == PerroEstadoRevision.APROBADO && saved.getEstadoAdopcion() == PerroEstadoAdopcion.DISPONIBLE;
+        if (!estabaEnCatalogo && ahoraEnCatalogo) {
+            eventPublisher.publishEvent(new com.cut.cardona.event.PerroCatalogoNuevoEvent(saved.getId()));
+        } else if (estabaEnCatalogo && !ahoraEnCatalogo) {
+            eventPublisher.publishEvent(new com.cut.cardona.event.PerroCatalogoRemoveEvent(saved.getId()));
+        }
+        return new DtoPerro(saved);
     }
 }
