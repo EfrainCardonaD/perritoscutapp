@@ -19,7 +19,7 @@ import java.util.UUID;
 public class CloudinaryImageStorageService implements ImageStorageService {
 
     private static final long MAX_PROFILE_SIZE = 15L * 1024 * 1024; // 15MB
-    private static final long MAX_DOG_SIZE = 5L * 1024 * 1024; // 5MB
+    private static final long MAX_DOG_SIZE = 15L * 1024 * 1024; // 15MB
     private static final Set<String> ALLOWED = Set.of("image/jpeg", "image/png", "image/webp", "image/gif");
 
     private final Cloudinary cloudinary;
@@ -35,8 +35,14 @@ public class CloudinaryImageStorageService implements ImageStorageService {
                 "public_id", publicId,
                 "overwrite", true,
                 "resource_type", "image",
-                // recorte cuadrado
-                "transformation", new Transformation().gravity("auto").crop("fill").aspectRatio("1:1")
+                // recorte cuadrado, redimensionamiento y optimización automática
+                "transformation", new Transformation()
+                        .gravity("auto")
+                        .crop("fill")
+                        .aspectRatio("1:1")
+                        .width(1024).height(1024)
+                        .quality("auto")
+                        .fetchFormat("auto")
         ));
         String secureUrl = (String) res.get("secure_url");
         String format = (String) res.get("format");
@@ -59,7 +65,13 @@ public class CloudinaryImageStorageService implements ImageStorageService {
                 "public_id", publicId,
                 "overwrite", true,
                 "resource_type", "image",
-                "transformation", new Transformation().gravity("auto").crop("fill").aspectRatio("1:1")
+                "transformation", new Transformation()
+                        .gravity("auto")
+                        .crop("fill")
+                        .aspectRatio("1:1")
+                        .width(1024).height(1024)
+                        .quality("auto")
+                        .fetchFormat("auto")
         ));
         String secureUrl = (String) res.get("secure_url");
         String format = (String) res.get("format");
@@ -86,10 +98,16 @@ public class CloudinaryImageStorageService implements ImageStorageService {
     @Override
     public String resolveDogImagePublicUrl(String id) {
         String publicId = perrosFolder + "/" + id;
-        // Mantener formato cuadrado
+        // Mantener formato cuadrado y optimización al servir
         return cloudinary.url()
                 .secure(true)
-                .transformation(new Transformation().gravity("auto").crop("fill").aspectRatio("1:1"))
+                .transformation(new Transformation()
+                        .gravity("auto")
+                        .crop("fill")
+                        .aspectRatio("1:1")
+                        .width(1024).height(1024)
+                        .quality("auto")
+                        .fetchFormat("auto"))
                 .generate(publicId);
     }
 
@@ -98,7 +116,13 @@ public class CloudinaryImageStorageService implements ImageStorageService {
         String publicId = perfilesFolder + "/" + id;
         return cloudinary.url()
                 .secure(true)
-                .transformation(new Transformation().gravity("auto").crop("fill").aspectRatio("1:1"))
+                .transformation(new Transformation()
+                        .gravity("auto")
+                        .crop("fill")
+                        .aspectRatio("1:1")
+                        .width(1024).height(1024)
+                        .quality("auto")
+                        .fetchFormat("auto"))
                 .generate(publicId);
     }
 

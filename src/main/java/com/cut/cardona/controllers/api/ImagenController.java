@@ -66,6 +66,9 @@ public class ImagenController {
         if (file == null || file.isEmpty()) {
             return ResponseEntity.badRequest().body(RestResponse.error("Archivo vacío"));
         }
+        if (file.getSize() > 15L * 1024 * 1024) { // 15MB
+            return ResponseEntity.status(422).body(RestResponse.error("El archivo supera el tamaño máximo de 15MB"));
+        }
         try {
             UploadResult result = imageStorageService.uploadDogImage(file);
             Map<String, Object> resp = new HashMap<>();
@@ -79,7 +82,9 @@ public class ImagenController {
             return ResponseEntity.badRequest().body(RestResponse.error(ex.getMessage()));
         } catch (Exception e) {
             log.error("Error subiendo imagen de perro", e);
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(RestResponse.error("No se pudo guardar la imagen"));
+            String msg = e.getMessage() != null ? e.getMessage() : "Error interno al guardar la imagen";
+            // Evitar exponer stacktrace, pero enviar mensaje claro para que el frontend pueda mostrar feedback
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(RestResponse.error("No se pudo guardar la imagen: " + msg));
         }
     }
 
