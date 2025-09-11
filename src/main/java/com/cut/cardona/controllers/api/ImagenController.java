@@ -64,7 +64,6 @@ public class ImagenController {
             @RequestPart("file") MultipartFile file,
             @RequestHeader(value = "X-Dog-Images-Count", required = false) Integer countHdr,
             @RequestParam(value = "count", required = false) Integer countParam) {
-        // Validación temprana: si el cliente indica que ya alcanzó el límite, rechazar antes de tocar el storage
         Integer count = countHdr != null ? countHdr : countParam;
         if (count != null && count >= MAX_DOG_IMAGES) {
             return ResponseEntity.status(422).body(RestResponse.error("Solo se permiten " + MAX_DOG_IMAGES + " imágenes por perro"));
@@ -72,7 +71,8 @@ public class ImagenController {
         if (file == null || file.isEmpty()) {
             return ResponseEntity.badRequest().body(RestResponse.error("Archivo vacío"));
         }
-        if (file.getSize() > 15L * 1024 * 1024) { // 15MB
+        // Volver a 15MB de entrada; el servicio comprimirá a ~9MB antes de subir
+        if (file.getSize() > 15L * 1024 * 1024) {
             return ResponseEntity.status(422).body(RestResponse.error("El archivo supera el tamaño máximo de 15MB"));
         }
         try {
@@ -85,12 +85,14 @@ public class ImagenController {
             resp.put("url", result.getUrl());
             return ResponseEntity.ok(RestResponse.success("Imagen subida", resp));
         } catch (IllegalArgumentException ex) {
-            return ResponseEntity.badRequest().body(RestResponse.error(ex.getMessage()));
+            return ResponseEntity.status(422).body(RestResponse.error(ex.getMessage()));
         } catch (Exception e) {
             log.error("Error subiendo imagen de perro", e);
-            String msg = e.getMessage() != null ? e.getMessage() : "Error interno al guardar la imagen";
-            // Evitar exponer stacktrace, pero enviar mensaje claro para que el frontend pueda mostrar feedback
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(RestResponse.error("No se pudo guardar la imagen: " + msg));
+            String raw = e.getMessage() != null ? e.getMessage() : "Error interno al guardar la imagen";
+            if (raw.contains("File size too large")) {
+                return ResponseEntity.status(422).body(RestResponse.error("El archivo supera el límite del proveedor tras el preprocesado"));
+            }
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(RestResponse.error("No se pudo guardar la imagen: " + raw));
         }
     }
 

@@ -36,12 +36,13 @@ export JWT_SECRET="your-super-secure-256-bit-secret-key-here"
 ### 2. Despliegue con Docker
 
 #### Docker Compose (Recomendado)
+
 ```yaml
 # docker-compose.yml
 version: '3.8'
 services:
   app:
-    build: .
+    build: ../..
     ports:
       - "8080:8080"
     environment:
