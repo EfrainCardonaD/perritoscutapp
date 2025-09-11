@@ -41,17 +41,34 @@ public class LocalImageStorageService implements ImageStorageService {
     public UploadResult uploadDogImage(MultipartFile file) throws Exception {
         validate(file, MAX_DOG_SIZE);
         ensureDir(perrosDir);
-        return saveToDir(file, perrosDir);
+        return saveDogToDir(file, perrosDir);
     }
 
     @Override
     public UploadResult uploadProfileImage(MultipartFile file) throws Exception {
         validate(file, MAX_PROFILE_SIZE);
         ensureDir(perfilesDir);
-        return saveToDir(file, perfilesDir);
+        return saveProfileToDir(file, perfilesDir);
     }
 
-    private UploadResult saveToDir(MultipartFile file, String baseDir) throws IOException {
+    private UploadResult saveDogToDir(MultipartFile file, String baseDir) throws IOException {
+        // Conservar proporciones: guardar el archivo tal cual con su extensión original
+        String original = file.getOriginalFilename();
+        String ext = "." + getExtension(original);
+        String id = UUID.randomUUID().toString();
+        String filename = id + ext.toLowerCase();
+        Path destino = Paths.get(baseDir).resolve(filename).normalize();
+        Files.copy(file.getInputStream(), destino, StandardCopyOption.REPLACE_EXISTING);
+        return UploadResult.builder()
+                .id(id)
+                .filename(filename)
+                .url("/api/imagenes/perritos/" + id)
+                .contentType(file.getContentType())
+                .size(file.getSize())
+                .build();
+    }
+
+    private UploadResult saveProfileToDir(MultipartFile file, String baseDir) throws IOException {
         // Procesar imagen: recortar al centro cuadrado y reducir a max 1024x1024
         BufferedImage img = readImageSafely(file.getInputStream());
         if (img == null) {

@@ -30,20 +30,17 @@ public class CloudinaryImageStorageService implements ImageStorageService {
     public UploadResult uploadDogImage(MultipartFile file) throws Exception {
         validate(file, MAX_DOG_SIZE);
         String id = UUID.randomUUID().toString();
-        String publicId = perrosFolder + "/" + id;
+        // Usar public_id sin carpeta y establecer 'folder' explícitamente
+        String publicId = id;
         Map<?, ?> res = cloudinary.uploader().upload(file.getBytes(), ObjectUtils.asMap(
                 "public_id", publicId,
+                "folder", perrosFolder,
                 "overwrite", true,
-                "resource_type", "image",
-                // recorte cuadrado, redimensionamiento y optimización automática
-                "transformation", new Transformation()
-                        .gravity("auto")
-                        .crop("fill")
-                        .aspectRatio("1:1")
-                        .width(1024).height(1024)
-                        .quality("auto")
-                        .fetchFormat("auto")
+                "resource_type", "image"
+                // Sin transformación: conservar proporciones y resolución originales
         ));
+        log.info("Cloudinary upload dog -> public_id={}, folder={}, url={}",
+                res.get("public_id"), res.get("folder"), res.get("secure_url"));
         String secureUrl = (String) res.get("secure_url");
         String format = (String) res.get("format");
         String filename = id + (StringUtils.hasText(format) ? "." + format : "");
@@ -60,19 +57,16 @@ public class CloudinaryImageStorageService implements ImageStorageService {
     public UploadResult uploadProfileImage(MultipartFile file) throws Exception {
         validate(file, MAX_PROFILE_SIZE);
         String id = UUID.randomUUID().toString();
-        String publicId = perfilesFolder + "/" + id;
+        // Usar public_id sin carpeta y establecer 'folder' explícitamente
+        String publicId = id;
         Map<?, ?> res = cloudinary.uploader().upload(file.getBytes(), ObjectUtils.asMap(
                 "public_id", publicId,
+                "folder", perfilesFolder,
                 "overwrite", true,
-                "resource_type", "image",
-                "transformation", new Transformation()
-                        .gravity("auto")
-                        .crop("fill")
-                        .aspectRatio("1:1")
-                        .width(1024).height(1024)
-                        .quality("auto")
-                        .fetchFormat("auto")
+                "resource_type", "image"
         ));
+        log.info("Cloudinary upload profile -> public_id={}, folder={}, url={}",
+                res.get("public_id"), res.get("folder"), res.get("secure_url"));
         String secureUrl = (String) res.get("secure_url");
         String format = (String) res.get("format");
         String filename = id + (StringUtils.hasText(format) ? "." + format : "");
@@ -98,14 +92,10 @@ public class CloudinaryImageStorageService implements ImageStorageService {
     @Override
     public String resolveDogImagePublicUrl(String id) {
         String publicId = perrosFolder + "/" + id;
-        // Mantener formato cuadrado y optimización al servir
+        // Sin forzar recorte ni resize; mantener proporciones. Opcional: optimizar formato/calidad en entrega.
         return cloudinary.url()
                 .secure(true)
                 .transformation(new Transformation()
-                        .gravity("auto")
-                        .crop("fill")
-                        .aspectRatio("1:1")
-                        .width(1024).height(1024)
                         .quality("auto")
                         .fetchFormat("auto"))
                 .generate(publicId);
@@ -117,10 +107,6 @@ public class CloudinaryImageStorageService implements ImageStorageService {
         return cloudinary.url()
                 .secure(true)
                 .transformation(new Transformation()
-                        .gravity("auto")
-                        .crop("fill")
-                        .aspectRatio("1:1")
-                        .width(1024).height(1024)
                         .quality("auto")
                         .fetchFormat("auto"))
                 .generate(publicId);

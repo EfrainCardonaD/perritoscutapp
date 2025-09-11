@@ -74,10 +74,10 @@ public class ImagenPerfil {
                tipoMime.equals("image/gif");
     }
 
-    // Método para validar tamaño máximo (5MB)
+    // Método para validar tamaño máximo (15MB)
     public boolean esTamanoValido() {
         if (tamanoBytes == null) return false;
-        return tamanoBytes <= 5_242_880L; // 5MB
+        return tamanoBytes <= 15_728_640L; // 15MB
     }
 
     @Override

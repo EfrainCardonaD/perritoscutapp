@@ -6,6 +6,7 @@ import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Import;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
@@ -24,6 +25,8 @@ import com.cut.cardona.modelo.imagenes.ImagenPerfil;
 import com.cut.cardona.security.CustomUserDetails;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 
+import java.nio.file.*;
+
 @RestController
 @RequestMapping("/api/imagenes")
 @RequiredArgsConstructor
@@ -36,6 +39,9 @@ public class ImagenController {
 
     private final ImageStorageService imageStorageService;
     private final RepositorioImagenPerfil repositorioImagenPerfil; // NUEVO
+
+    @Value("${app.storage.perros-dir:uploads/perritos/}")
+    private String perrosDir;
 
     private static final Map<String, String> MIME_TYPES = createMimeTypesMap();
 
@@ -88,14 +94,31 @@ public class ImagenController {
         }
     }
 
-    // ====== IMÁGENES DE PERROS (proxy a CDN para evitar CORS) ======
+    // ====== IMÁGENES DE PERROS (local o proxy a CDN) ======
 
-    @Operation(summary = "Obtener imagen de perro", description = "Devuelve la imagen de perro por id (proxy a CDN)")
+    @Operation(summary = "Obtener imagen de perro", description = "Devuelve la imagen de perro por id; local lee de disco, cloud hace proxy a CDN")
     @ApiResponse(responseCode = "200", description = "Imagen devuelta")
     @ApiResponse(responseCode = "404", description = "Imagen no encontrada")
     @GetMapping("/perritos/{id}")
     public ResponseEntity<byte[]> getImagenPerro(@PathVariable String id) {
         log.debug("[Imagenes] GET perritos id={}", id);
+        if (!imageStorageService.isCloudProvider()) {
+            // Leer desde almacenamiento local buscando por extensión conocida
+            try {
+                LocalFile lf = findLocalDogFile(id);
+                if (lf == null) return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
+                byte[] body = Files.readAllBytes(lf.path());
+                MediaType mt = MediaType.parseMediaType(lf.contentType());
+                return ResponseEntity.ok()
+                        .header(HttpHeaders.CACHE_CONTROL, "public, max-age=31536000, immutable")
+                        .contentType(mt)
+                        .contentLength(body.length)
+                        .body(body);
+            } catch (Exception ex) {
+                log.warn("Error leyendo imagen local {}: {}", id, ex.toString());
+                return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
+            }
+        }
         String url = imageStorageService.resolveDogImagePublicUrl(id);
         try {
             ProxyResult pr = fetchBinary(url, "GET");
@@ -114,11 +137,25 @@ public class ImagenController {
         }
     }
 
-    @Operation(summary = "HEAD imagen de perro", description = "Verifica si existe la imagen por id (proxy a CDN)")
+    @Operation(summary = "HEAD imagen de perro", description = "Verifica si existe la imagen por id; local revisa disco, cloud hace proxy HEAD")
     @ApiResponse(responseCode = "200", description = "Existe")
     @RequestMapping(value = "/perritos/{id}", method = RequestMethod.HEAD)
     public ResponseEntity<Void> headImagenPerro(@PathVariable String id) {
         log.debug("[Imagenes] HEAD perritos id={}", id);
+        if (!imageStorageService.isCloudProvider()) {
+            try {
+                LocalFile lf = findLocalDogFile(id);
+                if (lf == null) return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
+                return ResponseEntity.ok()
+                        .header(HttpHeaders.CACHE_CONTROL, "public, max-age=31536000, immutable")
+                        .contentType(MediaType.parseMediaType(lf.contentType()))
+                        .contentLength(Files.size(lf.path()))
+                        .build();
+            } catch (Exception ex) {
+                log.warn("Error HEAD local {}: {}", id, ex.toString());
+                return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
+            }
+        }
         String url = imageStorageService.resolveDogImagePublicUrl(id);
         try {
             ProxyResult pr = fetchBinary(url, "HEAD");
@@ -207,6 +244,21 @@ public class ImagenController {
 
     // Pequeño helper de proxy
     private record ProxyResult(byte[] body, String mediaType, long length) {}
+
+    private record LocalFile(Path path, String contentType) {}
+
+    private LocalFile findLocalDogFile(String id) {
+        Path base = Paths.get(perrosDir);
+        String[] exts = {"jpg", "jpeg", "png", "gif", "webp"};
+        for (String ext : exts) {
+            Path p = base.resolve(id + "." + ext);
+            if (Files.exists(p)) {
+                String ct = MIME_TYPES.getOrDefault(ext, "image/jpeg");
+                return new LocalFile(p, ct);
+            }
+        }
+        return null;
+    }
 
     private ProxyResult fetchBinary(String url, String method) throws Exception {
         // Usar HttpClient del JDK para seguir redirecciones de Cloudinary
