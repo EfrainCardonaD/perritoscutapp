@@ -274,14 +274,13 @@ public class PerroService {
                             .perro(perro)
                             .url(publicUrl)
                             .descripcion(imgReq.descripcion())
-                            .principal(false) // siempre false aquí; se ajustará abajo en fase 2
+                            .principal(false) // se ajustará después de clearPrincipal
                             .fechaSubida(new Timestamp(System.currentTimeMillis()))
                             .build();
                     repositorioImagenPerro.save(nueva);
                 }
             }
         }
-        // Ya no se toca la bandera principal aquí para evitar conflicto si el cambio es entre imágenes existentes.
         if (!plan.toKeep().isEmpty()) {
             for (String kid : plan.toKeep()) {
                 repositorioImagenPerro.findById(kid).ifPresent(img -> {
@@ -291,30 +290,17 @@ public class PerroService {
             }
         }
 
-        // Reasignación garantizando unicidad: primero limpiar todas (menos la nueva), luego marcar la solicitada.
+        // Reasignación atómica de principal usando bulk update para limpiar primero.
         if (plan.principalId() != null) {
-            List<ImagenPerro> actuales = repositorioImagenPerro.findByPerro_Id(perro.getId());
-            for (ImagenPerro im : actuales) {
-                if (!im.getId().equals(plan.principalId()) && Boolean.TRUE.equals(im.getPrincipal())) {
-                    im.setPrincipal(false);
-                    repositorioImagenPerro.save(im);
-                }
-            }
+            // 1) Desmarcar cualquier principal existente (single UPDATE)
+            repositorioImagenPerro.clearPrincipal(perro.getId());
+            // 2) Marcar la nueva principal (existente o recién agregada)
             repositorioImagenPerro.findById(plan.principalId()).ifPresent(img -> {
                 if (!Boolean.TRUE.equals(img.getPrincipal())) {
                     img.setPrincipal(true);
                     repositorioImagenPerro.save(img);
                 }
             });
-        } else {
-            List<ImagenPerro> actuales = repositorioImagenPerro.findByPerro_Id(perro.getId());
-            if (!actuales.isEmpty()) {
-                ImagenPerro first = actuales.get(0);
-                if (!Boolean.TRUE.equals(first.getPrincipal())) {
-                    first.setPrincipal(true);
-                    repositorioImagenPerro.save(first);
-                }
-            }
         }
 
         repositorioPerro.save(perro);
@@ -374,7 +360,6 @@ public class PerroService {
     public ImagenPerro agregarImagen(String perroId, org.springframework.web.multipart.MultipartFile file, String descripcion, Boolean principal) {
         Perro perro = repositorioPerro.findById(perroId)
                 .orElseThrow(() -> new IllegalArgumentException("Perro no encontrado"));
-        // Ownership / rol
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();
         String username = auth.getName();
         boolean esPrivilegiado = auth.getAuthorities().stream().map(GrantedAuthority::getAuthority)
@@ -382,7 +367,6 @@ public class PerroService {
         if (!esPrivilegiado && (perro.getUsuario() == null || !perro.getUsuario().getUsername().equals(username))) {
             throw new SecurityException("No autorizado para agregar imágenes a este perro");
         }
-        // Límite de imágenes
         int existentes = repositorioImagenPerro.findByPerro_Id(perroId).size();
         if (existentes >= MAX_IMGS) {
             throw new UnprocessableEntityException("Solo se permiten hasta " + MAX_IMGS + " imágenes por perro");
@@ -393,7 +377,6 @@ public class PerroService {
         if (file.getSize() > 15L * 1024 * 1024) {
             throw new UnprocessableEntityException("El archivo supera el tamaño máximo de 15MB");
         }
-        // Subida a storage
         final String uploadId;
         try {
             var upload = imageStorageService.uploadDogImage(file);
@@ -401,24 +384,21 @@ public class PerroService {
         } catch (Exception ex) {
             throw new UnprocessableEntityException(ex.getMessage() != null ? ex.getMessage() : "Error al subir imagen");
         }
+        boolean principalRequested = Boolean.TRUE.equals(principal);
+        if (principalRequested) {
+            // Limpiar principal previa antes de insertar nueva para evitar conflicto de índice único
+            repositorioImagenPerro.clearPrincipal(perroId);
+        }
         String publicUrl = imageStorageService.resolveDogImagePublicUrl(uploadId);
         ImagenPerro img = ImagenPerro.builder()
                 .id(uploadId)
                 .perro(perro)
                 .url(publicUrl)
                 .descripcion(descripcion)
-                .principal(Boolean.TRUE.equals(principal))
+                .principal(principalRequested)
                 .fechaSubida(new Timestamp(System.currentTimeMillis()))
                 .build();
         repositorioImagenPerro.save(img);
-        // Si se marcó como principal, desmarcar otras
-        if (Boolean.TRUE.equals(principal)) {
-            List<ImagenPerro> todas = repositorioImagenPerro.findByPerro_Id(perroId);
-            for (ImagenPerro im : todas) {
-                im.setPrincipal(im.getId().equals(img.getId()));
-                repositorioImagenPerro.save(im);
-            }
-        }
         return img;
     }
 
