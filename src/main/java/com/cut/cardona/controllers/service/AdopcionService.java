@@ -117,4 +117,40 @@ public class AdopcionService {
         repoSolicitud.save(s);
         return new DtoSolicitud(s);
     }
+
+    /**
+     * Obtiene una solicitud por id. Solo el solicitante o roles ADMIN/REVIEWER pueden verla.
+     */
+    @PreAuthorize("isAuthenticated()")
+    public DtoSolicitud obtenerSolicitud(String solicitudId) {
+        String username = SecurityContextHolder.getContext().getAuthentication().getName();
+        Usuario requester = repoUsuario.findByUserName(username).orElseThrow();
+        SolicitudAdopcion s = repoSolicitud.findById(solicitudId).orElseThrow();
+
+        boolean isOwner = s.getSolicitante() != null && requester.getId().equals(s.getSolicitante().getId());
+        boolean hasPriv = SecurityContextHolder.getContext().getAuthentication().getAuthorities().stream()
+                .anyMatch(a -> a.getAuthority().equals("ROLE_ADMIN") || a.getAuthority().equals("ROLE_REVIEWER"));
+        if (!isOwner && !hasPriv) {
+            throw new org.springframework.security.access.AccessDeniedException("No autorizado para ver esta solicitud");
+        }
+        return new DtoSolicitud(s);
+    }
+
+    /**
+     * Elimina una solicitud. Solo el solicitante o ADMIN pueden borrar.
+     */
+    @PreAuthorize("isAuthenticated()")
+    public void eliminarSolicitud(String solicitudId) {
+        String username = SecurityContextHolder.getContext().getAuthentication().getName();
+        Usuario requester = repoUsuario.findByUserName(username).orElseThrow();
+        SolicitudAdopcion s = repoSolicitud.findById(solicitudId).orElseThrow();
+
+        boolean isOwner = s.getSolicitante() != null && requester.getId().equals(s.getSolicitante().getId());
+        boolean isAdmin = SecurityContextHolder.getContext().getAuthentication().getAuthorities().stream()
+                .anyMatch(a -> a.getAuthority().equals("ROLE_ADMIN"));
+        if (!isOwner && !isAdmin) {
+            throw new org.springframework.security.access.AccessDeniedException("No autorizado para eliminar esta solicitud");
+        }
+        repoSolicitud.delete(s);
+    }
 }

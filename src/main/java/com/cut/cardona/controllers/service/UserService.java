@@ -59,4 +59,18 @@ public class UserService {
     }
 
     // Posibles métodos adicionales futuros (crear/actualizar usuario) podrían ir aquí
+
+    public boolean desactivarUsuario(String id) {
+        return repositorioUsuario.findById(id).map(u -> {
+            if (Boolean.FALSE.equals(u.getActivo())) {
+                return false; // ya inactivo
+            }
+            u.setActivo(false);
+            // Opcional: invalidar token / email verificado
+            u.setToken(null);
+            u.setFechaExpiracionToken(null);
+            repositorioUsuario.save(u);
+            return true;
+        }).orElseThrow(() -> new IllegalArgumentException("Usuario no encontrado"));
+    }
 }

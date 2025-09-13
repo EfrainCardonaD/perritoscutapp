@@ -17,15 +17,19 @@ import org.springframework.web.multipart.MultipartFile;
 
 import java.util.*;
 import com.cut.cardona.infra.storage.ImageStorageService;
-import com.cut.cardona.infra.storage.UploadResult;
 import com.cut.cardona.infra.storage.StorageConfig;
 import com.cut.cardona.modelo.dto.common.RestResponse;
 import com.cut.cardona.modelo.imagenes.RepositorioImagenPerfil;
 import com.cut.cardona.modelo.imagenes.ImagenPerfil;
+import com.cut.cardona.modelo.perros.RepositorioImagenPerro;
 import com.cut.cardona.security.CustomUserDetails;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 
 import java.nio.file.*;
+
+import com.cut.cardona.controllers.service.PerroService;
+import com.cut.cardona.modelo.perros.ImagenPerro;
+
 
 @RestController
 @RequestMapping("/api/imagenes")
@@ -35,10 +39,10 @@ import java.nio.file.*;
 @Import(StorageConfig.class)
 public class ImagenController {
 
-    private static final int MAX_DOG_IMAGES = 5;
-
     private final ImageStorageService imageStorageService;
-    private final RepositorioImagenPerfil repositorioImagenPerfil; // NUEVO
+    private final RepositorioImagenPerfil repositorioImagenPerfil;
+    private final RepositorioImagenPerro repositorioImagenPerro;
+    private final PerroService perroService;
 
     @Value("${app.storage.perros-dir:uploads/perritos/}")
     private String perrosDir;
@@ -55,45 +59,43 @@ public class ImagenController {
         return mimeTypes;
     }
 
-    // ====== SUBIDA DE IMÁGENES ======
+    // ====== SUBIDA DE IMÁGENES (requiere perroId) ======
 
-    @Operation(summary = "Subir imagen de perro", description = "Sube una imagen y devuelve su id (UUID) para asociarla con un perro")
-    @ApiResponse(responseCode = "200", description = "Imagen subida")
-    @PostMapping(value = "/perritos", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
-    public ResponseEntity<?> uploadImagenPerro(
+    @Operation(summary = "Subir imagen de perro (requiere perroId)", description = "Sube y asocia una imagen a un perro existente, validando límites y permisos")
+    @ApiResponse(responseCode = "200", description = "Imagen subida y asociada")
+    @PostMapping(value = "/perritos/{perroId}", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ResponseEntity<?> uploadImagenPerroVinculada(
+            @PathVariable("perroId") String perroId,
             @RequestPart("file") MultipartFile file,
-            @RequestHeader(value = "X-Dog-Images-Count", required = false) Integer countHdr,
-            @RequestParam(value = "count", required = false) Integer countParam) {
-        Integer count = countHdr != null ? countHdr : countParam;
-        if (count != null && count >= MAX_DOG_IMAGES) {
-            return ResponseEntity.status(422).body(RestResponse.error("Solo se permiten " + MAX_DOG_IMAGES + " imágenes por perro"));
-        }
-        if (file == null || file.isEmpty()) {
-            return ResponseEntity.badRequest().body(RestResponse.error("Archivo vacío"));
-        }
-        // Volver a 15MB de entrada; el servicio comprimirá a ~9MB antes de subir
-        if (file.getSize() > 15L * 1024 * 1024) {
-            return ResponseEntity.status(422).body(RestResponse.error("El archivo supera el tamaño máximo de 15MB"));
-        }
+            @RequestParam(value = "descripcion", required = false) String descripcion,
+            @RequestParam(value = "principal", required = false, defaultValue = "false") Boolean principal) {
         try {
-            UploadResult result = imageStorageService.uploadDogImage(file);
-            Map<String, Object> resp = new HashMap<>();
-            resp.put("id", result.getId());
-            resp.put("filename", result.getFilename());
-            resp.put("contentType", result.getContentType());
-            resp.put("size", result.getSize());
-            resp.put("url", result.getUrl());
-            return ResponseEntity.ok(RestResponse.success("Imagen subida", resp));
+            ImagenPerro img = perroService.agregarImagen(perroId, file, descripcion, principal);
+            Map<String, Object> data = new HashMap<>();
+            data.put("id", img.getId());
+            data.put("descripcion", img.getDescripcion());
+            data.put("principal", img.getPrincipal());
+            data.put("perroId", perroId);
+            data.put("url", imageStorageService.resolveDogImagePublicUrl(img.getId()));
+            return ResponseEntity.ok(RestResponse.success("Imagen subida", data));
         } catch (IllegalArgumentException ex) {
+            return ResponseEntity.status(400).body(RestResponse.error(ex.getMessage()));
+        } catch (com.cut.cardona.errores.UnprocessableEntityException ex) {
             return ResponseEntity.status(422).body(RestResponse.error(ex.getMessage()));
+        } catch (SecurityException ex) {
+            return ResponseEntity.status(403).body(RestResponse.error(ex.getMessage()));
         } catch (Exception e) {
-            log.error("Error subiendo imagen de perro", e);
+            log.error("Error subiendo imagen de perro y asociando", e);
             String raw = e.getMessage() != null ? e.getMessage() : "Error interno al guardar la imagen";
-            if (raw.contains("File size too large")) {
-                return ResponseEntity.status(422).body(RestResponse.error("El archivo supera el límite del proveedor tras el preprocesado"));
-            }
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(RestResponse.error("No se pudo guardar la imagen: " + raw));
         }
+    }
+
+    // Endpoint antiguo BLOQUEADO para evitar huérfanas
+    @Operation(summary = "[Deprecado] Subir imagen de perro sin id", description = "No permitido: se requiere perroId")
+    @PostMapping(value = "/perritos", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ResponseEntity<?> uploadImagenPerroDeprecado() {
+        return ResponseEntity.status(422).body(RestResponse.error("Debes subir la imagen a /api/imagenes/perritos/{perroId}"));
     }
 
     // ====== IMÁGENES DE PERROS (local o proxy a CDN) ======
@@ -105,7 +107,6 @@ public class ImagenController {
     public ResponseEntity<byte[]> getImagenPerro(@PathVariable String id) {
         log.debug("[Imagenes] GET perritos id={}", id);
         if (!imageStorageService.isCloudProvider()) {
-            // Leer desde almacenamiento local buscando por extensión conocida
             try {
                 LocalFile lf = findLocalDogFile(id);
                 if (lf == null) return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
@@ -226,6 +227,58 @@ public class ImagenController {
                 .build();
     }
 
+    // ====== ELIMINACIÓN DE IMÁGENES ======
+
+    @Operation(summary = "Eliminar imagen de perro", description = "Elimina una imagen por id. Si está asociada a un perro, requiere ser dueño o rol privilegiado; elimina asociación y archivo")
+    @ApiResponse(responseCode = "200", description = "Imagen eliminada")
+    @ApiResponse(responseCode = "404", description = "Imagen no encontrada en almacenamiento")
+    @DeleteMapping("/perritos/{id}")
+    public ResponseEntity<RestResponse<Void>> eliminarImagenPerro(@PathVariable String id, @AuthenticationPrincipal CustomUserDetails user) {
+        try { java.util.UUID.fromString(id); } catch (IllegalArgumentException ex) {
+            return ResponseEntity.badRequest().body(RestResponse.error("ID inválido", null));
+        }
+        var asociadaOpt = repositorioImagenPerro.findById(id);
+        if (asociadaOpt.isPresent()) {
+            ImagenPerro img = asociadaOpt.get();
+            if (user == null) return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(RestResponse.error("No autenticado", null));
+            boolean esDueno = img.getPerro() != null && img.getPerro().getUsuario() != null && img.getPerro().getUsuario().getId().equals(user.getUsuario().getId());
+            boolean esAdmin = user.getAuthorities().stream().anyMatch(a -> "ROLE_ADMIN".equals(a.getAuthority()) || "ROLE_REVIEWER".equals(a.getAuthority()));
+            if (!esDueno && !esAdmin) {
+                return ResponseEntity.status(HttpStatus.FORBIDDEN).body(RestResponse.error("No autorizado", null));
+            }
+            try {
+                repositorioImagenPerro.delete(img);
+            } catch (Exception e) {
+                log.warn("No se pudo borrar entidad ImagenPerro {}: {}", id, e.getMessage());
+            }
+        }
+        try {
+            if (imageStorageService.isCloudProvider()) {
+                imageStorageService.deleteDogImage(id);
+            } else {
+                deleteLocalDogFiles(id);
+            }
+        } catch (Exception e) {
+            log.warn("Error eliminando imagen perro {}: {}", id, e.getMessage());
+        }
+        return ResponseEntity.ok(RestResponse.success("Imagen eliminada (o ya inexistente)", null));
+    }
+
+    private void deleteLocalDogFiles(String id) {
+        try {
+            java.nio.file.Path base = java.nio.file.Paths.get(perrosDir);
+            String[] exts = {"jpg", "jpeg", "png", "gif", "webp"};
+            for (String ext : exts) {
+                java.nio.file.Path p = base.resolve(id + "." + ext);
+                if (java.nio.file.Files.exists(p)) {
+                    try { java.nio.file.Files.delete(p); } catch (Exception ex) { log.warn("No se pudo borrar archivo {}: {}", p, ex.getMessage()); }
+                }
+            }
+        } catch (Exception ex) {
+            log.debug("deleteLocalDogFiles fallo silencioso id={}: {}", id, ex.getMessage());
+        }
+    }
+
     // ====== Helpers ======
 
     private String extraerId(String filename) {
@@ -244,26 +297,46 @@ public class ImagenController {
         return userDetails.getAuthorities().stream().anyMatch(a -> "ROLE_ADMIN".equals(a.getAuthority()));
     }
 
-    // Pequeño helper de proxy
     private record ProxyResult(byte[] body, String mediaType, long length) {}
-
     private record LocalFile(Path path, String contentType) {}
 
     private LocalFile findLocalDogFile(String id) {
         Path base = Paths.get(perrosDir);
         String[] exts = {"jpg", "jpeg", "png", "gif", "webp"};
-        for (String ext : exts) {
-            Path p = base.resolve(id + "." + ext);
-            if (Files.exists(p)) {
-                String ct = MIME_TYPES.getOrDefault(ext, "image/jpeg");
-                return new LocalFile(p, ct);
+        try {
+            for (String ext : exts) {
+                Path p = base.resolve(id + "." + ext);
+                if (Files.exists(p)) {
+                    String ct = MIME_TYPES.getOrDefault(ext, "image/jpeg");
+                    return new LocalFile(p, ct);
+                }
             }
+            if (Files.exists(base) && Files.isDirectory(base)) {
+                try (var stream = Files.list(base)) {
+                    Optional<Path> found = stream
+                            .filter(Files::isRegularFile)
+                            .filter(p -> {
+                                String fn = p.getFileName().toString();
+                                return fn.startsWith(id + ".") || fn.equals(id);
+                            })
+                            .findFirst();
+                    if (found.isPresent()) {
+                        Path p = found.get();
+                        String fn = p.getFileName().toString();
+                        int dot = fn.lastIndexOf('.');
+                        String ext = dot > 0 ? fn.substring(dot + 1).toLowerCase() : "jpg";
+                        String ct = MIME_TYPES.getOrDefault(ext, "image/jpeg");
+                        return new LocalFile(p, ct);
+                    }
+                }
+            }
+        } catch (Exception ex) {
+            log.debug("findLocalDogFile fallo id={}: {}", id, ex.getMessage());
         }
         return null;
     }
 
-    private ProxyResult fetchBinary(String url, String method) throws Exception {
-        // Usar HttpClient del JDK para seguir redirecciones de Cloudinary
+    private ProxyResult fetchBinary(String url, String method) throws java.io.IOException, InterruptedException {
         java.net.http.HttpClient client = java.net.http.HttpClient.newBuilder()
                 .followRedirects(java.net.http.HttpClient.Redirect.NORMAL)
                 .build();
@@ -278,13 +351,11 @@ public class ImagenController {
         java.net.http.HttpResponse<byte[]> resp = client.send(rb.build(), java.net.http.HttpResponse.BodyHandlers.ofByteArray());
         int code = resp.statusCode();
         if (code >= 400) return null;
-        String contentType = Optional.ofNullable(resp.headers().firstValue("content-type").orElse(null))
-                .map(v -> v.split(";", 2)[0])
-                .orElse(null);
+        String contentType = resp.headers().firstValue("content-type").map(v -> v.split(";", 2)[0]).orElse(null);
         long len = -1;
         try {
-            String cl = resp.headers().firstValue("content-length").orElse(null);
-            if (cl != null) len = Long.parseLong(cl);
+            var clOpt = resp.headers().firstValue("content-length");
+            if (clOpt.isPresent()) len = Long.parseLong(clOpt.get());
         } catch (Exception ignored) {}
         byte[] body = "HEAD".equalsIgnoreCase(method) ? new byte[0] : resp.body();
         return new ProxyResult(body, contentType, len);

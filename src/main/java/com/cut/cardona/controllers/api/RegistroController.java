@@ -4,12 +4,14 @@ import com.cut.cardona.controllers.service.PerfilUsuarioService;
 import com.cut.cardona.controllers.service.RegistroService;
 import com.cut.cardona.errores.ErrorHandler;
 import com.cut.cardona.modelo.dto.common.RestResponse;
+import com.cut.cardona.modelo.dto.perfil.DtoActualizarPerfilRequest;
 import com.cut.cardona.modelo.dto.perfil.DtoPerfilCompleto;
 import com.cut.cardona.modelo.dto.registro.DtoRegistroCompletoRequest;
 import com.cut.cardona.modelo.dto.registro.DtoRegistroUsuario;
 import com.cut.cardona.modelo.dto.registro.DtoValidacionPaso1;
 import com.cut.cardona.modelo.dto.registro.DtoValidacionPaso2;
 import com.cut.cardona.modelo.usuarios.Usuario;
+import com.cut.cardona.security.CustomUserDetails;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -26,6 +28,7 @@ import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
 import jakarta.validation.Valid;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 
 import java.security.Principal;
 import java.util.Map;
@@ -301,6 +304,35 @@ public class RegistroController {
         } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                     .body(Map.of("error", "Error al obtener el perfil"));
+        }
+    }
+
+    /**
+     * ✅ ACTUALIZAR PERFIL - Usando DTO con Bean Validation
+     */
+    @Operation(
+            summary = "Actualizar campos del perfil",
+            description = "Actualiza datos básicos del perfil (sin imagen) del usuario autenticado"
+    )
+    @PatchMapping(value = "/perfil", consumes = MediaType.APPLICATION_JSON_VALUE)
+    @ResponseBody
+    public ResponseEntity<RestResponse<DtoPerfilCompleto>> actualizarPerfil(
+            @Valid @RequestBody DtoActualizarPerfilRequest request,
+            @AuthenticationPrincipal CustomUserDetails userDetails,
+            Principal principal) {
+        if (principal == null || userDetails == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                    .body(RestResponse.error("No autenticado", (DtoPerfilCompleto) null));
+        }
+        try {
+            String usuarioId = principal.getName();
+            var dto = perfilUsuarioService.actualizarPerfilCampos(usuarioId, request);
+            return ResponseEntity.ok(RestResponse.success("Perfil actualizado", dto));
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(RestResponse.error(e.getMessage(), (DtoPerfilCompleto) null));
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(RestResponse.error("Error al actualizar el perfil", (DtoPerfilCompleto) null));
         }
     }
 }

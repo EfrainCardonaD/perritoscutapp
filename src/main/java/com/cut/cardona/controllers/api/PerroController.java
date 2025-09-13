@@ -2,6 +2,7 @@ package com.cut.cardona.controllers.api;
 
 import com.cut.cardona.controllers.service.PerroService;
 import com.cut.cardona.modelo.dto.common.RestResponse;
+import com.cut.cardona.modelo.dto.perros.ActualizarPerroRequest;
 import com.cut.cardona.modelo.dto.perros.CrearPerroRequest;
 import com.cut.cardona.modelo.dto.perros.DtoPerro;
 import jakarta.validation.Valid;
@@ -70,5 +71,25 @@ public class PerroController {
     public ResponseEntity<RestResponse<DtoPerro>> cambiarEstado(@PathVariable("id") String id, @RequestParam("estado") String estado) {
         DtoPerro dto = perroService.cambiarEstadoAdopcion(id, estado);
         return ResponseEntity.ok(RestResponse.success("Estado de adopción actualizado", dto));
+    }
+
+    @GetMapping("/perros/{id}")
+    public ResponseEntity<RestResponse<DtoPerro>> detalle(@PathVariable("id") String id) {
+        // TODO(Fase3): añadir validaciones adicionales (ej. visibilidad si se introducen estados privados)
+        DtoPerro dto = perroService.obtenerPerro(id);
+        return ResponseEntity.ok(RestResponse.success("Detalle perro", dto));
+    }
+
+    @PatchMapping("/perros/{id}")
+    public ResponseEntity<RestResponse<DtoPerro>> actualizar(@PathVariable("id") String id,
+                                                             @Valid @RequestBody ActualizarPerroRequest req) {
+        DtoPerro dto = perroService.actualizarPerro(id, req);
+        return ResponseEntity.ok(RestResponse.success("Perro actualizado", dto));
+    }
+
+    @DeleteMapping("/perros/{id}")
+    public ResponseEntity<RestResponse<Void>> eliminar(@PathVariable("id") String id) {
+        perroService.eliminarPerro(id);
+        return ResponseEntity.ok(RestResponse.success("Perro eliminado", null));
     }
 }

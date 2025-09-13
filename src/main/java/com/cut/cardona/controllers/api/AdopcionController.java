@@ -43,4 +43,15 @@ public class AdopcionController {
     public ResponseEntity<DtoSolicitud> actualizarEstado(@PathVariable("id") String id, @RequestParam("estado") String estado) {
         return ResponseEntity.ok(adopcionService.actualizarEstado(id, estado));
     }
+
+    @GetMapping("/solicitudes/{id}")
+    public ResponseEntity<DtoSolicitud> obtenerSolicitud(@PathVariable("id") String id) {
+        return ResponseEntity.ok(adopcionService.obtenerSolicitud(id));
+    }
+
+    @DeleteMapping("/solicitudes/{id}")
+    public ResponseEntity<Void> eliminarSolicitud(@PathVariable("id") String id) {
+        adopcionService.eliminarSolicitud(id);
+        return ResponseEntity.ok().build();
+    }
 }

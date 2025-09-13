@@ -2,6 +2,7 @@ package com.cut.cardona.controllers.service;
 
 import com.cut.cardona.infra.storage.ImageStorageService;
 import com.cut.cardona.infra.storage.UploadResult;
+import com.cut.cardona.modelo.dto.perfil.DtoActualizarPerfilRequest;
 import com.cut.cardona.modelo.dto.perfil.DtoPerfilCompleto;
 import com.cut.cardona.modelo.dto.registro.DtoRegistroCompletoRequest;
 import com.cut.cardona.modelo.imagenes.ImagenPerfil;
@@ -99,20 +100,64 @@ public class PerfilUsuarioService {
     }
 
     /**
-     * Actualiza la imagen de perfil de un usuario
+     * Actualiza los campos básicos del perfil (sin imagen)
+     */
+    public DtoPerfilCompleto actualizarPerfilCampos(String usuarioId, DtoActualizarPerfilRequest req) {
+        PerfilUsuario perfil = repositorioPerfilUsuario.findByUsuarioId(usuarioId)
+                .orElseThrow(() -> new IllegalArgumentException("Perfil no encontrado"));
+        // Validaciones específicas
+        if (req.telefono() != null && !req.telefono().isBlank()) {
+            String telLimpio = req.telefono().replaceAll("[\\s()\\-]", "");
+            if (!telLimpio.equals(perfil.getTelefono()) && repositorioPerfilUsuario.existsByTelefono(telLimpio)) {
+                throw new IllegalArgumentException("El teléfono ya está registrado");
+            }
+            perfil.setTelefono(telLimpio);
+        }
+        if (req.nombreReal() != null) perfil.setNombreReal(req.nombreReal());
+        if (req.idioma() != null) perfil.setIdioma(req.idioma());
+        if (req.zonaHoraria() != null) perfil.setZonaHoraria(req.zonaHoraria());
+        if (req.fechaNacimiento() != null) {
+            if (req.fechaNacimiento().isAfter(java.time.LocalDate.now().minusYears(15))) {
+                throw new IllegalArgumentException("Debe ser mayor de 15 años");
+            }
+            perfil.setFechaNacimiento(req.fechaNacimiento());
+        }
+        perfil = repositorioPerfilUsuario.save(perfil);
+        ImagenPerfil imagen = repositorioImagenPerfil.findActivaByUsuarioId(usuarioId).orElse(null);
+        return construirDtoPerfilCompleto(perfil.getUsuario(), perfil, imagen);
+    }
+
+    /**
+     * Actualiza la imagen de perfil (elimina la anterior en el storage si aplica)
      */
     public String actualizarImagenPerfil(String usuarioId, MultipartFile archivo) {
         PerfilUsuario perfil = repositorioPerfilUsuario.findByUsuarioId(usuarioId)
                 .orElseThrow(() -> new IllegalArgumentException("Perfil no encontrado"));
 
-        // Desactivar imagen anterior si existe
+        // Desactivar imagen anterior y capturar para borrado
+        final String[] oldPublicIdHolder = {null};
         repositorioImagenPerfil.findActivaByUsuarioId(usuarioId)
                 .ifPresent(imagenAnterior -> {
                     imagenAnterior.setActiva(false);
                     repositorioImagenPerfil.save(imagenAnterior);
+                    // Derivar public_id de Cloudinary: nombreArchivo sin la extensión
+                    String nombreArchivo = imagenAnterior.getNombreArchivo();
+                    if (nombreArchivo != null) {
+                        int dot = nombreArchivo.lastIndexOf('.');
+                        if (dot > 0) {
+                            oldPublicIdHolder[0] = nombreArchivo.substring(0, dot);
+                        } else {
+                            oldPublicIdHolder[0] = nombreArchivo; // fallback
+                        }
+                    }
                 });
 
         ImagenPerfil nuevaImagen = procesarImagenPerfil(archivo, perfil);
+
+        // Borrado best-effort de imagen anterior en storage
+        if (oldPublicIdHolder[0] != null) {
+            try { imageStorageService.deleteProfileImage(oldPublicIdHolder[0]); } catch (Exception ignored) {}
+        }
         return nuevaImagen.getUrlPublica();
     }
 

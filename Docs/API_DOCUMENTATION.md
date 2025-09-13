@@ -23,20 +23,28 @@ Content-Type: application/json
 
 2) Imágenes
 - POST /imagenes/perritos (multipart/form-data)
-  Sube una imagen local de perro y devuelve su id (UUID) para asociarla.
+  Sube una imagen de perro y devuelve su id (UUID) para asociarla.
   Request (form-data): file=<archivo imagen>
   Response 200:
   { "id":"<uuid>", "filename":"<uuid>.jpg", "url":"/api/imagenes/perritos/<uuid>", "contentType":"image/jpeg", "size": 12345 }
 
 - GET /imagenes/perritos/{id}
-  Devuelve la imagen por id (sirve el archivo de uploads/perritos/<id>.*)
+  Devuelve la imagen por id.
 
 - HEAD /imagenes/perritos/{id}
   Verifica existencia sin descargar.
 
+- DELETE /imagenes/perritos/{id}
+  Elimina imagen suelta no asociada a un perro (idempotente). Respuestas:
+  200: eliminada o inexistente
+  422: asociada a un perro
+  400: UUID inválido
+
 - GET /imagenes/perfil/{filename}
 - HEAD /imagenes/perfil/{filename}
-  ...existing code...
+  Devuelve / verifica imagen de perfil activa (autorizado dueño o ADMIN). Redirige a URL pública.
+
+Nota: Las imágenes de perros se sirven por transformación Cloudinary (quality=auto, format=auto) en modo cloud; local usa disco.
 
 3) Perros
 - GET /perros/catalogo (público)
@@ -46,15 +54,18 @@ Content-Type: application/json
   {
     id, nombre, edad, sexo, tamano, raza, descripcion, ubicacion,
     estadoAdopcion, estadoRevision, usuarioId,
-    imagenPrincipalId,            // nuevo: id de imagen principal si existe
-    imagenIds                     // nuevo: lista de ids de imágenes
+    imagenPrincipalId,            // id de imagen principal
+    imagenIds                     // lista de ids de imágenes
   }
 
-- GET /perros/mis (auth)
+- GET /perros/mis (auth USER/ADMIN/REVIEWER)
   Response 200: [DtoPerro]
 
+- GET /perros/{id} (público si aprobado y disponible, actualmente sin restricción adicional)
+  Response 200: DtoPerro, 404 si no existe
+
 - POST /perros (rol: USER)
-  Body (validado):
+  Body:
   {
     "nombre":"Firulais",
     "edad":3,
@@ -67,58 +78,124 @@ Content-Type: application/json
       {"id":"<uuid-subido>", "descripcion":"principal", "principal":true}
     ]
   }
-  Response 200: DtoPerro
-  Errores: 422 si el id no existe en almacenamiento local; 400 validación.
+  Respuestas: 201 OK, 422 validación negocio, 400 validación datos.
 
-- POST /admin/perros/{id}/aprobar (roles: ADMIN, REVIEWER)
-  Regla: requiere 1 imagen principal
-  Respuestas: 200 OK, 422 si sin imagen principal
-
-- POST /admin/perros/{id}/rechazar (roles: ADMIN, REVIEWER)
-  200 OK
-
-- PATCH /admin/perros/{id}/estado?estado=Disponible|Adoptado|Pendiente|No disponible (roles: ADMIN, REVIEWER)
-  Regla: "Disponible" solo si estadoRevision = "Aprobado"
-  Respuestas: 200 OK, 422 si regla incumplida
-
-4) Adopciones
-- POST /solicitudes (rol: USER)
-  Body (validado): { "perroId":"<uuid>", "mensaje":"opcional" }
-  Reglas: no auto-solicitar; perro APROBADO + DISPONIBLE
-  Respuestas: 200 OK, 422 si reglas incumplidas
-
-- POST /solicitudes/{id}/documentos (rol: USER)
-  Body (validado): { "tipoDocumento":"Identificacion|CartaResponsiva", "urlDocumento":"...", "nombreArchivo":"...", "tipoMime":"...", "tamanoBytes": 123 }
-  Respuestas: 200 OK, 400 validación
-
-- GET /solicitudes/mis (rol: USER)
-  200 OK: [DtoSolicitud]
-  DtoSolicitud: { id, perroId, solicitanteId, estado, mensaje, fechaSolicitud, fechaRespuesta }
-
-- GET /admin/solicitudes/pendientes (roles: ADMIN, REVIEWER)
-  200 OK: [DtoSolicitud] (estado = "Pendiente")
-
-- PATCH /admin/solicitudes/{id}/estado?estado=En revisión|Aceptada|Rechazada|Cancelada (roles: ADMIN, REVIEWER)
+- PATCH /perros/{id} (owner o ADMIN/REVIEWER)
+  Body (parcial, pero siempre debe incluir lista completa de imágenes resultantes):
+  {
+    "nombre":"Opcional",
+    "imagenes":[
+      {"id":"<uuid-existente-o-nuevo>", "principal":true, "descripcion":"opcional"},
+      {"id":"<uuid2>", "principal":false}
+    ]
+  }
   Reglas:
-  - En revisión/Aceptada: requiere 2 tipos de documentos cargados
-  - Aceptada: perro debe estar APROBADO + DISPONIBLE y no debe existir otra aceptada del mismo perro
-  Respuestas: 200 OK, 422 si faltan documentos o perro no disponible, 409 si ya existe aceptada
+   * Máx 5 imágenes
+   * Exactamente 1 principal
+   * Nuevas imágenes deben existir previamente (subidas)
+   * Imágenes omitidas se eliminan (borrado diferido en Cloudinary after commit)
+  Respuestas: 200 OK, 422 reglas, 403 no autorizado, 404 no encontrado.
 
-5) Estados (enums)
+- DELETE /perros/{id} (owner o ADMIN/REVIEWER)
+  Borrado total del registro + imágenes (cascade JPA) y borrado diferido en Cloudinary.
+  Respuestas: 200 OK, 403, 404.
+
+- POST /admin/perros/{id}/aprobar (ADMIN/REVIEWER)
+- POST /admin/perros/{id}/rechazar (ADMIN/REVIEWER)
+- PATCH /admin/perros/{id}/estado?estado=Disponible|Adoptado|Pendiente|No disponible (ADMIN/REVIEWER)
+  Reglas: Disponible solo si estadoRevision = Aprobado
+
+4) Perfil de Usuario
+- GET /perfil/completo (auth)
+  Devuelve DtoPerfilCompleto del usuario autenticado.
+
+- PATCH /perfil (auth)
+  Actualiza campos: nombreReal, telefono, idioma, zonaHoraria, fechaNacimiento.
+  Reglas: teléfono único; fechaNacimiento >= 15 años.
+  Respuestas: 200 OK, 400 validación, 401 no autenticado.
+
+- POST /perfil/imagen (multipart/form-data, auth)
+  Sube o reemplaza imagen de perfil. Desactiva la anterior y la borra en Cloudinary (best-effort). Campos form: imagen=<archivo>.
+  Respuestas: 200 OK, 400 validación, 401, 500 error.
+
+- GET /perfil/usuario/{usuarioId} (ADMIN) — Obtener perfil de otro usuario.
+
+5) Usuarios
+- GET /usuarios/me/resumen (auth) — Resumen básico.
+- DELETE /usuarios/admin/{id} (ADMIN)
+  Soft delete: usuario.activo=false. No se elimina imagen ni datos históricos.
+  Respuestas: 200 OK (Usuario desactivado / ya inactivo), 404 si no existe.
+
+6) Adopciones
+- POST /solicitudes (rol: USER)
+- POST /solicitudes/{id}/documentos (rol: USER)
+- GET /solicitudes/mis (rol: USER)
+- GET /admin/solicitudes/pendientes (ADMIN/REVIEWER)
+- PATCH /admin/solicitudes/{id}/estado?estado=En revisión|Aceptada|Rechazada|Cancelada (ADMIN/REVIEWER)
+
+- GET /solicitudes/{id} (rol: USER o ADMIN/REVIEWER — propietario o roles con privilegios)
+  Response 200: DtoSolicitud
+
+- DELETE /solicitudes/{id} (propietario o ADMIN)
+  Response 200: eliminado / 403 no autorizado / 404 no encontrado
+
+(Pendientes opcionales: Job purga de huérfanas / diagnóstico)
+
+7) Estados (enums)
 - Perro.estadoRevision: Pendiente | Aprobado | Rechazado
 - Perro.estadoAdopcion: Disponible | Adoptado | Pendiente | No disponible
 - Solicitud.estado: Pendiente | En revisión | Aceptada | Rechazada | Cancelada
 
-6) Validaciones principales (400 Bad Request)
-- CrearPerroRequest: nombre required; edad 0..25; sexo/tamano en lista; ubicacion <=255; imagenes not empty; Imagen.url required <=500
-- CrearSolicitudRequest: perroId required UUID; mensaje <=2000
-- DocumentoRequest: tipoDocumento/urlDocumento required; límites de longitud y tamaño >=0
-- Filtros de catálogo: sexo/tamano valores válidos; page>=0; size 1..100
+8) Validaciones principales (400 / 422)
+- CrearPerroRequest: nombre; edad 0..25; sexo/tamano válidos; ubicacion <=255; imágenes 1..5; 1 principal.
+- ActualizarPerroRequest: misma regla de imágenes (lista completa resultante).
+- Imagen subida: <=15MB entrada; Cloudinary comprimido a ~9MB objetivo.
+- Perfil: teléfono único; fechaNacimiento >= 15 años.
 
-7) Seguridad y roles
-- Público: POST /login, POST /refresh, registro, GET/HEAD /imagenes/perfil/**, GET/HEAD /imagenes/perritos/**, GET /perros/catalogo, swagger y actuator.
-- Protegido: resto.
+9) Seguridad y roles
+- Público: /login, /refresh, registro, GET/HEAD imágenes, catálogo perros.
+- Protegido: resto (JWT).
+- Roles: ADMIN, REVIEWER, USER (aplicadas con @PreAuthorize).
 
-8) Notas
-- Almacén local de imágenes de perros: uploads/perritos/{uuid}.{ext}. Use POST /imagenes/perritos para obtener el uuid.
-- Front construye la URL de imagen como `${VITE_API_BASE_URL}/imagenes/perritos/{id}`.
+10) Notas Técnicas
+- Borrado diferido: imágenes eliminadas en PATCH/DELETE perro se borran en Cloudinary after commit (TransactionSynchronization.afterCommit).
+- Eliminación idempotente de imágenes sueltas: DELETE /imagenes/perritos/{id} no falla si ya no existe.
+- Soft delete usuario: isEnabled() refleja activo=false -> autenticación futura bloqueada.
+- Transformaciones Cloudinary: quality=auto, format=auto; URL derivada con public_id = <folder>/<uuid>.
+- Evitar almacenar transformaciones en BD; se guarda URL resoluble por consistencia histórica.
+
+11) Errores comunes
+- 400: Formato de UUID inválido, validaciones Bean Validation.
+- 401: Token ausente/expirado.
+- 403: Falta de rol o no owner.
+- 404: Recurso inexistente.
+- 422: Reglas de negocio (límite imágenes, falta principal, estado inválido, imagen asociada en borrado suelto).
+
+12) Ejemplos CURL
+- Crear perro:
+  curl -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json" \
+       -d '{"nombre":"Firulais","sexo":"Macho","tamano":"Mediano","imagenes":[{"id":"UUID","principal":true}]}' \
+       http://localhost:8080/api/perros
+
+- Patch perro (cambiar principal):
+  curl -X PATCH -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json" \
+       -d '{"imagenes":[{"id":"UUID1","principal":false},{"id":"UUID2","principal":true}]}' \
+       http://localhost:8080/api/perros/{id}
+
+- Eliminar perro:
+  curl -X DELETE -H "Authorization: Bearer $TOKEN" http://localhost:8080/api/perros/{id}
+
+- Patch perfil:
+  curl -X PATCH -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json" \
+       -d '{"nombreReal":"Nuevo Nombre","telefono":"+5215550001111"}' \
+       http://localhost:8080/api/perfil
+
+- Soft delete usuario (ADMIN):
+  curl -X DELETE -H "Authorization: Bearer $ADMIN_TOKEN" http://localhost:8080/api/usuarios/admin/{id}
+
+13) Futuro / Opcional
+- Job programado de purga de imágenes huérfanas >24h sin asociar
+- Endpoint diagnóstico de orphans
+
+---
+Última actualización: (sin tests unitarios añadidos en esta iteración por decisión de alcance)

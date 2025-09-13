@@ -228,4 +228,14 @@ public class CloudinaryImageStorageService implements ImageStorageService {
             log.warn("No se pudo eliminar imagen en Cloudinary id={}: {}", id, ex.getMessage());
         }
     }
+
+    @Override
+    public void deleteProfileImage(String id) {
+        try {
+            String publicId = perfilesFolder + "/" + id;
+            cloudinary.uploader().destroy(publicId, ObjectUtils.asMap("resource_type", "image"));
+        } catch (Exception ex) {
+            log.warn("No se pudo eliminar imagen de perfil en Cloudinary id={}: {}", id, ex.getMessage());
+        }
+    }
 }

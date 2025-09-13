@@ -16,6 +16,11 @@ public interface ImageStorageService {
 
     // Nuevo: borrar imagen de perro por id (public_id)
     default void deleteDogImage(String id) {
-        // implementación por defecto no-op
+        // no-op por defecto
+    }
+
+    // Nuevo: borrar imagen de perfil por id (public_id)
+    default void deleteProfileImage(String id) {
+        // no-op por defecto
     }
 }

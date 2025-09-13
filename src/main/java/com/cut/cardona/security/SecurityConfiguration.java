@@ -25,7 +25,7 @@ import java.util.List;
 
 @Configuration
 @EnableWebSecurity
-@EnableMethodSecurity(prePostEnabled = true)
+@EnableMethodSecurity
 @RequiredArgsConstructor
 public class SecurityConfiguration {
 
@@ -57,7 +57,11 @@ public class SecurityConfiguration {
                         // Catálogo público de perros
                         .requestMatchers(HttpMethod.GET, "/api/perros/catalogo").authenticated()
                         // Imágenes de perros SOLO para usuarios autenticados con rol explícito
+                        // Rutas que requieren autenticación explícita
+                        .requestMatchers(HttpMethod.GET, "/api/perros/mis").authenticated()
+                        .requestMatchers(HttpMethod.GET, "/api/perros/mis/**").authenticated()
                         .requestMatchers(HttpMethod.GET, "/api/imagenes/perritos/**").authenticated()
+                        // Se coloca después de la regla para /api/perros/mis para evitar permitirla por error.
                         .requestMatchers(HttpMethod.HEAD, "/api/imagenes/perritos/**").authenticated()
                         .requestMatchers("/swagger-ui.html", "/v3/api-docs/**", "/swagger-ui/**").permitAll()
                         .requestMatchers("/actuator/health/**", "/actuator/info").permitAll()
@@ -75,7 +79,7 @@ public class SecurityConfiguration {
         CorsConfiguration configuration = new CorsConfiguration();
         List<String> allowedOrigins = Arrays.stream(allowedOriginsCsv.split(",")).map(String::trim).toList();
         configuration.setAllowedOriginPatterns(allowedOrigins);
-        configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE", "OPTIONS"));
+        configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH", "HEAD"));
         configuration.setAllowedHeaders(List.of("*"));
         configuration.setAllowCredentials(true);
         configuration.setMaxAge(3600L);

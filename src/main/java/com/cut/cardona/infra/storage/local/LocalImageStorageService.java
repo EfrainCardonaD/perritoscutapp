@@ -191,4 +191,22 @@ public class LocalImageStorageService implements ImageStorageService {
 
     @Override
     public String resolveProfileImagePublicUrl(String id) { return "/api/imagenes/perfil/" + id + ".jpg"; }
+
+    @Override
+    public void deleteProfileImage(String id) {
+        // Intentar eliminar archivo de perfil basado en patrones comunes
+        try {
+            Path dir = Paths.get(perfilesDir);
+            if (!Files.exists(dir)) return;
+            String[] exts = {"jpg", "jpeg", "png", "gif", "webp"};
+            for (String ext : exts) {
+                Path candidate = dir.resolve(id + "." + ext);
+                if (Files.exists(candidate)) {
+                    try { Files.delete(candidate); } catch (Exception ex) { log.warn("No se pudo borrar archivo {}: {}", candidate, ex.getMessage()); }
+                }
+            }
+        } catch (Exception e) {
+            log.debug("deleteProfileImage local ignorado: {}", e.getMessage());
+        }
+    }
 }

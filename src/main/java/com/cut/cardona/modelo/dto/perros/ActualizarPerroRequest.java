@@ -3,8 +3,7 @@ package com.cut.cardona.modelo.dto.perros;
 import jakarta.validation.constraints.*;
 import java.util.List;
 
-public record CrearPerroRequest(
-        @NotBlank(message = "El nombre es obligatorio")
+public record ActualizarPerroRequest(
         @Size(max = 100, message = "El nombre no debe superar 100 caracteres")
         String nombre,
 
@@ -27,5 +26,7 @@ public record CrearPerroRequest(
         @Size(max = 255, message = "La ubicación no debe superar 255 caracteres")
         String ubicacion,
 
+        @NotEmpty(message = "Debe incluir al menos una imagen")
         List<ImagenPerroRequest> imagenes
 ) {}
+
