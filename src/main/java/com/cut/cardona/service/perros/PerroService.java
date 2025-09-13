@@ -237,11 +237,9 @@ public class PerroService {
     @Transactional
     public DtoPerro actualizarPerro(String perroId, ActualizarPerroRequest req) {
         Perro perro = repositorioPerro.findById(perroId).orElseThrow(() -> new IllegalArgumentException("Perro no encontrado"));
-        // Regla de negocio: no permitir editar perros adoptados o no disponibles
         if (perro.getEstadoAdopcion() == PerroEstadoAdopcion.ADOPTADO || perro.getEstadoAdopcion() == PerroEstadoAdopcion.NO_DISPONIBLE) {
             throw new UnprocessableEntityException("No se puede editar un perro que está adoptado o no disponible");
         }
-        // Ownership / rol
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();
         String username = auth.getName();
         boolean esPrivilegiado = auth.getAuthorities().stream().map(GrantedAuthority::getAuthority)
@@ -249,9 +247,7 @@ public class PerroService {
         if (!esPrivilegiado && (perro.getUsuario() == null || !perro.getUsuario().getUsername().equals(username))) {
             throw new SecurityException("No autorizado para actualizar este perro");
         }
-        // Plan imágenes
         var plan = planUpdateImagenes(perro, req.imagenes());
-        // Actualizar campos si vienen
         if (req.nombre() != null) perro.setNombre(req.nombre());
         if (req.edad() != null) perro.setEdad(req.edad());
         if (req.sexo() != null) perro.setSexo(req.sexo());
@@ -260,17 +256,14 @@ public class PerroService {
         if (req.descripcion() != null) perro.setDescripcion(req.descripcion());
         if (req.ubicacion() != null) perro.setUbicacion(req.ubicacion());
 
-        // Map rápido de request por id
         java.util.Map<String, com.cut.cardona.modelo.dto.perros.ImagenPerroRequest> reqMap = req.imagenes().stream()
                 .collect(java.util.stream.Collectors.toMap(com.cut.cardona.modelo.dto.perros.ImagenPerroRequest::id, i -> i));
 
-        // Remover imágenes
         if (!plan.toRemove().isEmpty()) {
             for (String rid : plan.toRemove()) {
                 repositorioImagenPerro.findById(rid).ifPresent(repositorioImagenPerro::delete);
             }
         }
-        // Añadir nuevas (siempre principal=false para evitar conflicto de índice único cuando la nueva será la principal)
         if (!plan.toAdd().isEmpty()) {
             for (String nid : plan.toAdd()) {
                 var imgReq = reqMap.get(nid);
@@ -281,33 +274,51 @@ public class PerroService {
                             .perro(perro)
                             .url(publicUrl)
                             .descripcion(imgReq.descripcion())
-                            .principal(false)
+                            .principal(false) // siempre false aquí; se ajustará abajo en fase 2
                             .fechaSubida(new Timestamp(System.currentTimeMillis()))
                             .build();
                     repositorioImagenPerro.save(nueva);
                 }
             }
         }
-        // Actualizar principal en las que se mantienen
+        // Ya no se toca la bandera principal aquí para evitar conflicto si el cambio es entre imágenes existentes.
         if (!plan.toKeep().isEmpty()) {
             for (String kid : plan.toKeep()) {
                 repositorioImagenPerro.findById(kid).ifPresent(img -> {
-                    img.setPrincipal(kid.equals(plan.principalId()));
                     img.setDescripcion(reqMap.get(kid) != null ? reqMap.get(kid).descripcion() : img.getDescripcion());
                     repositorioImagenPerro.save(img);
                 });
             }
         }
-        // Asegurar solo una principal: si principalId pertenece a toAdd se mantiene; si no, ya se seteo en keep.
-        // Ajustar banderas para otras imágenes que hayan quedado con principal true por herencia
-        List<ImagenPerro> todas = repositorioImagenPerro.findByPerro_Id(perro.getId());
-        for (ImagenPerro im : todas) {
-            im.setPrincipal(im.getId().equals(plan.principalId()));
-            repositorioImagenPerro.save(im);
+
+        // Reasignación garantizando unicidad: primero limpiar todas (menos la nueva), luego marcar la solicitada.
+        if (plan.principalId() != null) {
+            List<ImagenPerro> actuales = repositorioImagenPerro.findByPerro_Id(perro.getId());
+            for (ImagenPerro im : actuales) {
+                if (!im.getId().equals(plan.principalId()) && Boolean.TRUE.equals(im.getPrincipal())) {
+                    im.setPrincipal(false);
+                    repositorioImagenPerro.save(im);
+                }
+            }
+            repositorioImagenPerro.findById(plan.principalId()).ifPresent(img -> {
+                if (!Boolean.TRUE.equals(img.getPrincipal())) {
+                    img.setPrincipal(true);
+                    repositorioImagenPerro.save(img);
+                }
+            });
+        } else {
+            List<ImagenPerro> actuales = repositorioImagenPerro.findByPerro_Id(perro.getId());
+            if (!actuales.isEmpty()) {
+                ImagenPerro first = actuales.get(0);
+                if (!Boolean.TRUE.equals(first.getPrincipal())) {
+                    first.setPrincipal(true);
+                    repositorioImagenPerro.save(first);
+                }
+            }
         }
+
         repositorioPerro.save(perro);
 
-        // Borrado diferido Cloudinary después commit
         if (!plan.toRemove().isEmpty()) {
             List<String> removidas = List.copyOf(plan.toRemove());
             if (TransactionSynchronizationManager.isSynchronizationActive()) {
@@ -318,7 +329,6 @@ public class PerroService {
                     }
                 });
             } else {
-                // fallback fuera de transacción
                 removidas.forEach(r -> { try { imageStorageService.deleteDogImage(r); } catch (Exception ignored) {} });
             }
         }
