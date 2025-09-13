@@ -1,189 +1,86 @@
 package com.cut.cardona.errores;
 
-import com.cut.cardona.modelo.dto.common.RestResponse;
-import com.cut.cardona.security.ratelimit.RateLimitExceededException;
-import jakarta.persistence.EntityNotFoundException;
-import jakarta.validation.ValidationException;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.validation.ConstraintViolationException;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.authentication.BadCredentialsException;
-import org.springframework.web.bind.MethodArgumentNotValidException;
-import org.springframework.web.bind.annotation.ExceptionHandler;
-import org.springframework.web.bind.annotation.RestControllerAdvice;
-import org.springframework.http.converter.HttpMessageNotReadableException;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.web.HttpMediaTypeNotSupportedException;
-import org.springframework.web.bind.MissingRequestHeaderException;
-import org.springframework.web.multipart.MaxUploadSizeExceededException;
-import org.springframework.web.multipart.MultipartException;
+import org.springframework.web.bind.MethodArgumentNotValidException;
+import org.springframework.web.bind.annotation.ControllerAdvice;
+import org.springframework.web.bind.annotation.ExceptionHandler;
+import org.springframework.http.converter.HttpMessageNotReadableException;
 
-import java.util.HashMap;
-import java.util.Map;
+import java.time.Instant;
+import java.util.stream.Collectors;
 
-@RestControllerAdvice
+/**
+ * Manejo centralizado de excepciones para evitar exponer detalles internos (por ejemplo errores SQL crudos)
+ * y devolver un formato consistente.
+ */
 @Slf4j
+@ControllerAdvice
 public class GlobalExceptionHandler {
 
-    @ExceptionHandler(EntityNotFoundException.class)
-    public ResponseEntity<RestResponse<Void>> handleEntityNotFound(EntityNotFoundException ex) {
-        log.warn("Entity not found: {}", ex.getMessage());
-        return ResponseEntity.status(HttpStatus.NOT_FOUND)
-                .body(RestResponse.error("Recurso no encontrado"));
-    }
-
-    @ExceptionHandler(MethodArgumentNotValidException.class)
-    public ResponseEntity<RestResponse<Map<String, String>>> handleValidationErrors(MethodArgumentNotValidException ex) {
-        log.warn("Validation errors found: {}", ex.getBindingResult().getFieldErrorCount());
-
-        Map<String, String> errores = new HashMap<>();
-        ex.getBindingResult().getFieldErrors().forEach(error -> {
-            log.debug("Field error: {} = {}", error.getField(), error.getDefaultMessage());
-            errores.put(error.getField(), error.getDefaultMessage());
-        });
-
-        // Tomar siempre el primer mensaje de error capturado
-        String mensajePrincipal = ex.getBindingResult().getFieldErrors().isEmpty()
-                ? "Error de validación"
-                : ex.getBindingResult().getFieldErrors().get(0).getDefaultMessage();
-
-        return ResponseEntity.status(HttpStatus.BAD_REQUEST)
-                .body(RestResponse.error(mensajePrincipal, errores));
-    }
-
-    @ExceptionHandler(ValidacionDeIntegridad.class)
-    public ResponseEntity<RestResponse<Void>> handleValidacionDeIntegridad(ValidacionDeIntegridad ex) {
-        log.warn("Validation integrity error: {}", ex.getMessage());
-
-        return ResponseEntity.status(HttpStatus.BAD_REQUEST)  // Cambiado de UNAUTHORIZED a BAD_REQUEST
-                .body(RestResponse.error(ex.getMessage()));
-    }
-
-    @ExceptionHandler(ValidationException.class)
-    public ResponseEntity<RestResponse<Void>> handleValidationException(ValidationException ex) {
-        log.warn("Validation exception: {}", ex.getMessage());
-
-        return ResponseEntity.status(HttpStatus.BAD_REQUEST)
-                .body(RestResponse.error(ex.getMessage()));
-    }
-
-    @ExceptionHandler(DomainConflictException.class)
-    public ResponseEntity<RestResponse<Void>> handleDomainConflict(DomainConflictException ex) {
-        log.warn("Domain conflict: {}", ex.getMessage());
-        return ResponseEntity.status(HttpStatus.CONFLICT)
-                .body(RestResponse.error(ex.getMessage()));
+    private ResponseEntity<ErrorResponse> build(HttpStatus status, String mensaje, String error, HttpServletRequest req) {
+        return ResponseEntity.status(status)
+                .body(new ErrorResponse(mensaje, error, status.value(), Instant.now(), req.getRequestURI()));
     }
 
     @ExceptionHandler(UnprocessableEntityException.class)
-    public ResponseEntity<RestResponse<Void>> handleUnprocessable(UnprocessableEntityException ex) {
-        log.warn("Unprocessable entity: {}", ex.getMessage());
-        return ResponseEntity.status(HttpStatus.UNPROCESSABLE_ENTITY)
-                .body(RestResponse.error(ex.getMessage()));
+    public ResponseEntity<ErrorResponse> handleUnprocessable(UnprocessableEntityException ex, HttpServletRequest req) {
+        return build(HttpStatus.UNPROCESSABLE_ENTITY, ex.getMessage(), "UNPROCESSABLE_ENTITY", req);
     }
 
-    @ExceptionHandler(DataIntegrityViolationException.class)
-    public ResponseEntity<RestResponse<Void>> handleDataIntegrityViolation(DataIntegrityViolationException ex) {
-        log.error("Data integrity violation: {}", ex.getMessage());
-
-        String errorMessage = "Error de integridad de datos";
-        String specificCause = ex.getMostSpecificCause() != null && ex.getMostSpecificCause().getMessage() != null
-                ? ex.getMostSpecificCause().getMessage().toLowerCase()
-                : "";
-
-        if (specificCause.contains("uk_imagen_principal_perro")) {
-            errorMessage = "Solo puede haber una imagen principal por perro";
-        } else if (specificCause.contains("email")) {
-            errorMessage = "Este email ya está registrado en el sistema";
-        } else if (specificCause.contains("user_name") || specificCause.contains("username")) {
-            errorMessage = "Este nombre de usuario ya está en uso";
-        } else if (specificCause.contains("telefono") || specificCause.contains("phone")) {
-            errorMessage = "Este número de teléfono ya está registrado";
-        } else if (specificCause.contains("documento")) {
-            errorMessage = "Este documento ya está registrado en el sistema";
-        } else if (specificCause.contains("unique") || specificCause.contains("duplicate")) {
-            errorMessage = "Ya existe un registro con estos datos";
-        }
-
-        return ResponseEntity.status(HttpStatus.CONFLICT)
-                .body(RestResponse.error(errorMessage));
+    @ExceptionHandler({IllegalArgumentException.class})
+    public ResponseEntity<ErrorResponse> handleBadRequest(RuntimeException ex, HttpServletRequest req) {
+        return build(HttpStatus.BAD_REQUEST, ex.getMessage(), "BAD_REQUEST", req);
     }
 
-    @ExceptionHandler(RateLimitExceededException.class)
-    public ResponseEntity<RestResponse<Void>> handleRateLimitExceeded(RateLimitExceededException ex) {
-        log.warn("Rate limit exceeded: {}", ex.getMessage());
-
-        return ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS)
-                .body(RestResponse.error("Demasiadas solicitudes. Por favor, intenta más tarde."));
+    @ExceptionHandler({SecurityException.class, AccessDeniedException.class})
+    public ResponseEntity<ErrorResponse> handleForbidden(RuntimeException ex, HttpServletRequest req) {
+        return build(HttpStatus.FORBIDDEN, ex.getMessage(), "FORBIDDEN", req);
     }
 
-    @ExceptionHandler(IllegalArgumentException.class)
-    public ResponseEntity<RestResponse<Void>> handleIllegalArgument(IllegalArgumentException ex) {
-        log.warn("Illegal argument: {}", ex.getMessage());
-
-        return ResponseEntity.status(HttpStatus.BAD_REQUEST)
-                .body(RestResponse.error(ex.getMessage()));
+    @ExceptionHandler(MethodArgumentNotValidException.class)
+    public ResponseEntity<ErrorResponse> handleValidation(MethodArgumentNotValidException ex, HttpServletRequest req) {
+        String detalle = ex.getBindingResult().getFieldErrors().stream()
+                .map(fe -> fe.getField() + ": " + fe.getDefaultMessage())
+                .collect(Collectors.joining("; "));
+        return build(HttpStatus.BAD_REQUEST, detalle.isBlank() ? "Datos inválidos" : detalle, "VALIDATION_ERROR", req);
     }
 
-    @ExceptionHandler(MaxUploadSizeExceededException.class)
-    public ResponseEntity<RestResponse<Void>> handleMaxUploadSize(MaxUploadSizeExceededException ex) {
-        log.warn("Archivo demasiado grande: {}", ex.getMessage());
-        return ResponseEntity.status(HttpStatus.PAYLOAD_TOO_LARGE)
-                .body(RestResponse.error("El archivo supera el tamaño máximo permitido (15MB)"));
-    }
-
-    @ExceptionHandler(MultipartException.class)
-    public ResponseEntity<RestResponse<Void>> handleMultipart(MultipartException ex) {
-        log.warn("Error de multipart: {}", ex.getMessage());
-        return ResponseEntity.status(HttpStatus.BAD_REQUEST)
-                .body(RestResponse.error("Solicitud multipart inválida"));
-    }
-
-    @ExceptionHandler(RuntimeException.class)
-    public ResponseEntity<RestResponse<Void>> handleRuntimeException(RuntimeException ex) {
-        log.error("Runtime exception: {}", ex.getMessage(), ex);
-
-        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                .body(RestResponse.error("Error interno del servidor. Por favor, intenta más tarde."));
-    }
-
-    @ExceptionHandler(Exception.class)
-    public ResponseEntity<RestResponse<Void>> handleGenericException(Exception ex) {
-        log.error("Unexpected exception: {}", ex.getMessage(), ex);
-
-        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                .body(RestResponse.error("Ha ocurrido un error inesperado. Por favor, contacta al soporte técnico."));
-    }
-
-    @ExceptionHandler(BadCredentialsException.class)
-    public ResponseEntity<RestResponse<Void>> handleBadCredentials(BadCredentialsException ex) {
-        log.warn("Bad credentials: {}", ex.getMessage());
-        return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
-                .body(RestResponse.error("Credenciales inválidas"));
+    @ExceptionHandler(ConstraintViolationException.class)
+    public ResponseEntity<ErrorResponse> handleConstraintViolation(ConstraintViolationException ex, HttpServletRequest req) {
+        String detalle = ex.getConstraintViolations().stream()
+                .map(cv -> cv.getPropertyPath() + ": " + cv.getMessage())
+                .collect(Collectors.joining("; "));
+        return build(HttpStatus.BAD_REQUEST, detalle.isBlank() ? "Violación de restricción" : detalle, "CONSTRAINT_VIOLATION", req);
     }
 
     @ExceptionHandler(HttpMessageNotReadableException.class)
-    public ResponseEntity<RestResponse<Map<String, Object>>> handleHttpMessageNotReadable(HttpMessageNotReadableException ex) {
-        log.warn("Malformed JSON: {}", ex.getMessage());
-        String detalle = ex.getMostSpecificCause().getMessage();
-        return ResponseEntity.status(HttpStatus.BAD_REQUEST)
-                .body(RestResponse.error("Formato JSON inválido", Map.of("detalle", detalle)));
-    }
-
-    @ExceptionHandler(MissingRequestHeaderException.class)
-    public ResponseEntity<RestResponse<Map<String, Object>>> handleMissingHeader(MissingRequestHeaderException ex) {
-        log.warn("Missing header: {}", ex.getHeaderName());
-        return ResponseEntity.status(HttpStatus.BAD_REQUEST)
-                .body(RestResponse.error("Header requerido ausente: " + ex.getHeaderName(), Map.of("header", ex.getHeaderName())));
+    public ResponseEntity<ErrorResponse> handleUnreadable(HttpMessageNotReadableException ex, HttpServletRequest req) {
+        return build(HttpStatus.BAD_REQUEST, "Cuerpo de la petición mal formado o incompleto", "MALFORMED_JSON", req);
     }
 
     @ExceptionHandler(HttpMediaTypeNotSupportedException.class)
-    public ResponseEntity<RestResponse<Map<String, Object>>> handleMediaTypeNotSupported(HttpMediaTypeNotSupportedException ex) {
-        log.warn("Unsupported media type: {}", ex.getContentType());
-        var data = Map.of(
-                "contentTypeRecibido", String.valueOf(ex.getContentType()),
-                "contentTypesSoportados", ex.getSupportedMediaTypes().stream().map(Object::toString).toList()
-        );
-        return ResponseEntity.status(HttpStatus.UNSUPPORTED_MEDIA_TYPE)
-                .body(RestResponse.error("Content-Type no soportado", data));
+    public ResponseEntity<ErrorResponse> handleMediaType(HttpMediaTypeNotSupportedException ex, HttpServletRequest req) {
+        return build(HttpStatus.UNSUPPORTED_MEDIA_TYPE, "Tipo de contenido no soportado", "UNSUPPORTED_MEDIA_TYPE", req);
+    }
+
+    @ExceptionHandler(DataIntegrityViolationException.class)
+    public ResponseEntity<ErrorResponse> handleDataIntegrity(DataIntegrityViolationException ex, HttpServletRequest req) {
+        log.warn("DataIntegrityViolation: {}", ex.getMostSpecificCause() != null ? ex.getMostSpecificCause().getMessage() : ex.getMessage());
+        return build(HttpStatus.CONFLICT, "Operación inválida por integridad de datos", "DATA_INTEGRITY_VIOLATION", req);
+    }
+
+    @ExceptionHandler(Exception.class)
+    public ResponseEntity<ErrorResponse> handleGeneric(Exception ex, HttpServletRequest req) {
+        // Log completo para diagnóstico, pero no exponer mensaje interno al cliente
+        log.error("Error inesperado", ex);
+        return build(HttpStatus.INTERNAL_SERVER_ERROR, "Error interno inesperado", "INTERNAL_ERROR", req);
     }
 }
+
