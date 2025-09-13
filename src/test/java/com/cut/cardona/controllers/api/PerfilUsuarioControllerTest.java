@@ -1,6 +1,7 @@
 package com.cut.cardona.controllers.api;
 
-import com.cut.cardona.controllers.service.PerfilUsuarioService;
+import com.cut.cardona.api.controller.auth.RegistroController;
+import com.cut.cardona.service.perfil.PerfilUsuarioService;
 import com.cut.cardona.modelo.dto.perfil.DtoPerfilCompleto;
 import com.cut.cardona.modelo.usuarios.Roles;
 import com.cut.cardona.modelo.usuarios.RepositorioUsuario;

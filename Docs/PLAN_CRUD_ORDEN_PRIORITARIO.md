@@ -18,8 +18,7 @@ Resumen rápido para retomar sin releer todo:
 - Pendiente inmediato:
   1. (Opcional) Endpoint GET /api/solicitudes/{id}
   2. (Opcional) DELETE /api/solicitudes/{id}
-  3. (Opcional) Job purga huérfanas (diseño + stub)
-  4. Documentar endpoints nuevos en API_DOCUMENTATION.md (si procede)
+  3. Documentar endpoints nuevos en API_DOCUMENTATION.md (si procede)
 - Evaluar si se requiere documentación adicional en API_DOCUMENTATION.md
 
 ---
@@ -40,7 +39,6 @@ Resumen rápido para retomar sin releer todo:
 3. Servicios de dominio (PerroService, PerfilUsuarioService) deben incorporar lógica interna de actualización/borrado ANTES de exponer endpoints públicos (controlador) para reducir iteraciones en API.
 4. Endpoints de lectura (GET detalle) se agregan antes de PATCH/DELETE para facilitar pruebas y validaciones.
 5. Pruebas unitarias/integración básicas deben existir antes de introducir lógica de eliminación en cascada (fail-fast si se rompe).
-6. Limpieza de huérfanas siempre al final (depende de poder distinguir asociadas vs no asociadas; requiere queries definitivas).
 
 ---
 ## 3. Riesgos de Orden Incorrecto
@@ -175,34 +173,57 @@ Mock: CloudinaryImageStorageService en tests -> verificar invocaciones deleteDog
 
 ---
 ## 12. Checklist Final (Reordenada)
-[ ] Auditoría entidades / constraints (Fase 0)
-[x] Extensión ImageStorageService.deleteProfileImage (Fase 1)
-[x] Implementación Cloudinary deleteProfileImage (Fase 1)
-[x] Métodos internos servicio Perro (obtener) (Fase 2 - parcial)
-[x] Refactor attachImagenes (Fase 2)
-[x] Helpers validación imágenes (Fase 2)
-[x] DTO ActualizarPerroRequest (Fase 2)
-[x] planUpdateImagenes (Fase 2 - sin tests) 
-[-] Tests unitarios planUpdateImagenes (OMITIDO)
-[x] Método actualizarPerro (Fase 4)
-[x] PATCH /api/perros/{id} (Fase 4)
-[x] DELETE /api/perros/{id} (Fase 5)
-[x] DELETE /api/imagenes/perritos/{id} (Fase 6)
-[x] Métodos internos Perfil (actualizar campos, reemplazo imagen) (Fase 4)
-[x] PATCH /api/perfil (Fase 4)
-[x] GET /api/perros/{id} (Fase 3)
-[x] DELETE /api/usuarios/{id} (Fase 5 - lógico)
-[x] GET /api/solicitudes/{id} (Fase 6)
-[x] (Opc) DELETE /api/solicitudes/{id} (Fase 6)
-[ ] Job purga huérfanas (Fase 7)
-[-] Suite de tests mínima (OMITIDA)
+-[ ] Auditoría entidades / constraints (Fase 0)
+-[x] Extensión ImageStorageService.deleteProfileImage (Fase 1)
+-[x] Implementación Cloudinary deleteProfileImage (Fase 1)
+-[x] Métodos internos servicio Perro (obtener) (Fase 2 - parcial)
+-[x] Refactor attachImagenes (Fase 2)
+-[x] Helpers validación imágenes (Fase 2)
+-[x] DTO ActualizarPerroRequest (Fase 2)
+-[x] planUpdateImagenes (Fase 2 - sin tests) 
+-[-] Tests unitarios planUpdateImagenes (OMITIDO)
+-[x] Método actualizarPerro (Fase 4)
+-[x] PATCH /api/perros/{id} (Fase 4)
+-[x] DELETE /api/perros/{id} (Fase 5)
+-[x] DELETE /api/imagenes/perritos/{id} (Fase 6)
+-[x] Métodos internos Perfil (actualizar campos, reemplazo imagen) (Fase 4)
+-[x] PATCH /api/perfil (Fase 4)
+-[x] GET /api/perros/{id} (Fase 3)
+-[x] DELETE /api/usuarios/{id} (Fase 5 - lógico)
+-[x] GET /api/solicitudes/{id} (Fase 6)
+-[x] (Opc) DELETE /api/solicitudes/{id} (Fase 6)
++[x] Auditoría entidades / constraints (Fase 0)
++[x] Extensión ImageStorageService.deleteProfileImage (Fase 1)
++[x] Implementación Cloudinary deleteProfileImage (Fase 1)
++[x] Métodos internos servicio Perro (obtener) (Fase 2 - parcial)
++[x] Refactor attachImagenes (Fase 2)
++[x] Helpers validación imágenes (Fase 2)
++[x] DTO ActualizarPerroRequest (Fase 2)
++[x] planUpdateImagenes (Fase 2 - sin tests)
++[-] Tests unitarios planUpdateImagenes (OMITIDO)
++[x] Método actualizarPerro (Fase 4)
++[x] PATCH /api/perros/{id} (Fase 4)
++[x] DELETE /api/perros/{id} (Fase 5)
++[x] DELETE /api/imagenes/perritos/{id} (Fase 6)
++[x] Métodos internos Perfil (actualizar campos, reemplazo imagen) (Fase 4)
++[x] PATCH /api/perfil (Fase 4)
++[x] GET /api/perros/{id} (Fase 3)
++[x] DELETE /api/usuarios/{id} (Fase 5 - lógico)
++[>] Decidir implementación de endpoints de solicitudes (Fase 6) - En progreso
++[x] Documentar endpoints añadidos (PATCH /api/perfil, DELETE imagen suelta, DELETE usuario lógico)
++[>] Job purga huérfanas (Fase 7) - Implementación con tabla staging_subidas y servicio
++[-] Suite de tests mínima (OMITIDA)
 
 ---
 ## 13. Próximos Pasos Inmediatos (Concretos)
-1. Decidir implementación de endpoints de solicitudes (GET / DELETE) si siguen en alcance.
-2. Documentar endpoints añadidos (PATCH /api/perfil, DELETE imagen suelta, DELETE usuario lógico).
-3. Definir alcance real del job de purga huérfanas (si se mantiene) y crear stub.
-4. Cerrar plan marcando tareas opcionales como fuera de alcance si no se abordarán.
+-1. [>] Decidir implementación de endpoints de solicitudes (GET / DELETE) si siguen en alcance. - En progreso
+-2. [>] Documentar endpoints añadidos (PATCH /api/perfil, DELETE imagen suelta, DELETE usuario lógico). - En progreso
+-3. [x] Implementar job de purga huérfanas con tabla staging_subidas y servicio dedicado. - Completado
+-4. [ ] Cerrar plan marcando tareas opcionales como fuera de alcance si no se abordarán.
++1. [>] Decidir implementación de endpoints de solicitudes (GET / DELETE) si siguen en alcance. - En progreso
++2. [x] Documentar endpoints añadidos (PATCH /api/perfil, DELETE imagen suelta, DELETE usuario lógico). - Completado (ver API_DOCUMENTATION.md)
++3. [>] Definir alcance real del job de purga huérfanas (si se mantiene) y crear stub. - En progreso (stub creado)
++4. [ ] Cerrar plan marcando tareas opcionales como fuera de alcance si no se abordarán.
 
 ---
 ## 14. Micro-Entregas Basadas en DoD (Integración Progresiva)

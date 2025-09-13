@@ -9,3 +9,4 @@ import java.util.List;
 public interface RepositorioImagenPerro extends JpaRepository<ImagenPerro, String> {
     List<ImagenPerro> findByPerro_Id(String perroId);
 }
+

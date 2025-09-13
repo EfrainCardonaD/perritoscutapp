@@ -1,5 +1,6 @@
 package com.cut.cardona.controllers.api;
 
+import com.cut.cardona.api.controller.ImagenController;
 import com.cut.cardona.modelo.usuarios.RepositorioUsuario;
 import com.cut.cardona.security.TokenService;
 import org.junit.jupiter.api.BeforeEach;
