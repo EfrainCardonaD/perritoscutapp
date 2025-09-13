@@ -14,12 +14,12 @@ Resumen rápido para retomar sin releer todo:
   - Perfil: DTO actualización (DtoActualizarPerfilRequest), método actualizarPerfilCampos y reemplazo imagen con borrado anterior
   - Endpoint PATCH /api/perfil añadido
   - Borrado lógico de usuario (DELETE /api/usuarios/admin/{id}) marcando activo=false sin eliminar datos
+  - Capa adopciones separada: UsuarioAdopcionController, AdminReviewerAdopcionController + servicios (UsuarioAdopcionService, AdminReviewerAdopcionService)
+  - Endpoints adopciones: crear, subir documento, ver mis solicitudes, ver detalle, actualizar mensaje, cancelar, eliminar (usuario); listar pendientes, búsqueda filtrada, actualizar estado (admin/reviewer)
 - Decisión: Omitidas pruebas unitarias en esta iteración (documentado)
 - Pendiente inmediato:
-  1. (Opcional) Endpoint GET /api/solicitudes/{id}
-  2. (Opcional) DELETE /api/solicitudes/{id}
-  3. Documentar endpoints nuevos en API_DOCUMENTATION.md (si procede)
-- Evaluar si se requiere documentación adicional en API_DOCUMENTATION.md
+  - (Revisión) Documentar endpoints adopciones en API_DOCUMENTATION.md
+  - (Opcional) endpoint revertir adopción (no en alcance actual)
 
 ---
 ## 1. Mapa de Entidades y Dependencias
@@ -209,9 +209,16 @@ Mock: CloudinaryImageStorageService en tests -> verificar invocaciones deleteDog
 +[x] PATCH /api/perfil (Fase 4)
 +[x] GET /api/perros/{id} (Fase 3)
 +[x] DELETE /api/usuarios/{id} (Fase 5 - lógico)
-+[>] Decidir implementación de endpoints de solicitudes (Fase 6) - En progreso
++[x] División capa adopciones por rol (controladores + servicios nuevos)
++[x] Endpoints usuario adopciones (crear, docs, mis, detalle, actualizar mensaje, cancelar, eliminar)
++[x] Endpoints admin/reviewer adopciones (pendientes, búsqueda filtrada, actualizar estado con efectos en perro)
++[>] Documentar endpoints adopciones (en progreso)
++[>] Evaluar necesidad revertir adopción (fuera de alcance actual)
++[x] GET /api/solicitudes/{id} (Fase 6) (cubierto en controlador nuevo)
++[x] DELETE /api/solicitudes/{id} (Fase 6) (controlador usuario)
++[>] Decidir implementación de endpoints de solicitudes (Fase 6) - COMPLETADO
 +[x] Documentar endpoints añadidos (PATCH /api/perfil, DELETE imagen suelta, DELETE usuario lógico)
-+[>] Job purga huérfanas (Fase 7) - Implementación con tabla staging_subidas y servicio
++[>] Definir alcance real del job de purga huérfanas (stub) - En progreso
 +[-] Suite de tests mínima (OMITIDA)
 
 ---
@@ -220,10 +227,10 @@ Mock: CloudinaryImageStorageService en tests -> verificar invocaciones deleteDog
 -2. [>] Documentar endpoints añadidos (PATCH /api/perfil, DELETE imagen suelta, DELETE usuario lógico). - En progreso
 -3. [x] Implementar job de purga huérfanas con tabla staging_subidas y servicio dedicado. - Completado
 -4. [ ] Cerrar plan marcando tareas opcionales como fuera de alcance si no se abordarán.
-+1. [>] Decidir implementación de endpoints de solicitudes (GET / DELETE) si siguen en alcance. - En progreso
-+2. [x] Documentar endpoints añadidos (PATCH /api/perfil, DELETE imagen suelta, DELETE usuario lógico). - Completado (ver API_DOCUMENTATION.md)
-+3. [>] Definir alcance real del job de purga huérfanas (si se mantiene) y crear stub. - En progreso (stub creado)
-+4. [ ] Cerrar plan marcando tareas opcionales como fuera de alcance si no se abordarán.
++1. [x] Implementación endpoints adopciones usuario y admin/reviewer (COMPLETADO)
++2. [>] Documentar endpoints adopciones en API_DOCUMENTATION.md (En progreso)
++3. [>] Revisar si se implementa revertir adopción (posponer) 
++4. [>] Cerrar plan marcando tareas opcionales fuera de alcance
 
 ---
 ## 14. Micro-Entregas Basadas en DoD (Integración Progresiva)

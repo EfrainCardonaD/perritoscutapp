@@ -42,6 +42,7 @@ public class CloudinaryImageStorageService implements ImageStorageService {
     private final Cloudinary cloudinary;
     private final String perrosFolder;
     private final String perfilesFolder;
+    private final String documentosFolder; // nuevo folder para documentos
 
     @Override
     public UploadResult uploadDogImage(MultipartFile file) throws Exception {
@@ -86,6 +87,32 @@ public class CloudinaryImageStorageService implements ImageStorageService {
         String secureUrl = (String) res.get("secure_url");
         String format = (String) res.get("format");
         String filename = id + (StringUtils.hasText(format) ? "." + format : "");
+        return UploadResult.builder()
+                .id(id)
+                .filename(filename)
+                .url(secureUrl)
+                .contentType(file.getContentType())
+                .size((long) payload.length)
+                .build();
+    }
+
+    @Override
+    public UploadResult uploadDocumentImage(MultipartFile file) throws Exception {
+        // Reutiliza validaciones (mismos tipos y tamaño que dog/profile)
+        validate(file, MAX_DOG_SIZE);
+        String id = UUID.randomUUID().toString();
+        byte[] payload = prepareForUpload(file, TARGET_UPLOAD_BYTES);
+        Map<?, ?> res = cloudinary.uploader().upload(payload, ObjectUtils.asMap(
+                "public_id", id,
+                "folder", documentosFolder,
+                "asset_folder", documentosFolder,
+                "overwrite", true,
+                "resource_type", "image"
+        ));
+        String secureUrl = (String) res.get("secure_url");
+        String format = (String) res.get("format");
+        String filename = id + (StringUtils.hasText(format) ? "." + format : "");
+        log.info("Cloudinary upload document -> id={}, folder={}, url={}", id, documentosFolder, secureUrl);
         return UploadResult.builder()
                 .id(id)
                 .filename(filename)
@@ -223,6 +250,14 @@ public class CloudinaryImageStorageService implements ImageStorageService {
     }
 
     @Override
+    public String resolveDocumentImagePublicUrl(String id) {
+        String publicId = documentosFolder + "/" + id;
+        return cloudinary.url().secure(true)
+                .transformation(new Transformation().quality("auto").fetchFormat("auto"))
+                .generate(publicId);
+    }
+
+    @Override
     public void deleteDogImage(String id) {
         try {
             String publicId = perrosFolder + "/" + id;
@@ -239,6 +274,16 @@ public class CloudinaryImageStorageService implements ImageStorageService {
             cloudinary.uploader().destroy(publicId, ObjectUtils.asMap("resource_type", "image"));
         } catch (Exception ex) {
             log.warn("No se pudo eliminar imagen de perfil en Cloudinary id={}: {}", id, ex.getMessage());
+        }
+    }
+
+    @Override
+    public void deleteDocumentImage(String id) {
+        try {
+            String publicId = documentosFolder + "/" + id;
+            cloudinary.uploader().destroy(publicId, ObjectUtils.asMap("resource_type", "image"));
+        } catch (Exception ex) {
+            log.warn("No se pudo eliminar documento en Cloudinary id={}: {}", id, ex.getMessage());
         }
     }
 

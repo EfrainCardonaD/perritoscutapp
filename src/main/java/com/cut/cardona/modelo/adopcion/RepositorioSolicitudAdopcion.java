@@ -22,4 +22,10 @@ public interface RepositorioSolicitudAdopcion extends JpaRepository<SolicitudAdo
 
     @Query("SELECT COUNT(s) FROM SolicitudAdopcion s WHERE s.perro.id = :perroId AND s.estado = com.cut.cardona.modelo.adopcion.enums.SolicitudEstado.ACEPTADA")
     long countAceptadasByPerro(@Param("perroId") String perroId);
+
+    // Nuevo: búsqueda filtrada flexible para administración
+    @Query("SELECT s FROM SolicitudAdopcion s WHERE (:estado IS NULL OR s.estado = :estado) AND (:perroId IS NULL OR s.perro.id = :perroId) AND (:solicitanteId IS NULL OR s.solicitante.id = :solicitanteId)")
+    List<SolicitudAdopcion> buscarFiltrado(@Param("estado") SolicitudEstado estado,
+                                           @Param("perroId") String perroId,
+                                           @Param("solicitanteId") String solicitanteId);
 }

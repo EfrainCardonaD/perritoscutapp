@@ -198,4 +198,65 @@ Nota: Las imágenes de perros se sirven por transformación Cloudinary (quality=
 - Endpoint diagnóstico de orphans
 
 ---
-Última actualización: (sin tests unitarios añadidos en esta iteración por decisión de alcance)
+## 14) Adopciones (Separación por Roles y Nuevos Endpoints)
+
+Reorganización de endpoints de adopciones separando claramente responsabilidades de usuarios y administradores/revisores.
+
+### 14.1 Endpoints Usuario (ROLE_USER)
+Base: /api/usuario/adopciones/solicitudes
+- POST /  Crear solicitud
+- POST /{id}/documentos  Subir documento (Identificacion|CartaResponsiva)
+- GET /mis  Listar solicitudes propias
+- GET /{id}  Ver detalle (solo propietario o roles privilegiados)
+- PATCH /{id}/mensaje  Actualizar mensaje si estado = Pendiente
+- POST /{id}/cancelar  Cambiar estado a Cancelada (no permitido si ya Aceptada/Rechazada)
+- DELETE /{id}  Eliminar (solo si Pendiente, salvo ADMIN)
+
+### 14.2 Endpoints Admin/Reviewer (ROLE_ADMIN / ROLE_REVIEWER)
+Base: /api/admin/adopciones/solicitudes
+- GET /pendientes  Listar solicitudes en estado Pendiente
+- GET ?estado=&perroId=&solicitanteId=  Búsqueda filtrada (todos los estados)
+- PATCH /{id}/estado?estado=En revisión|Aceptada|Rechazada  Actualizar estado (validaciones documentos y disponibilidad)
+- POST /{id}/revertir  Revertir adopción (solo si la solicitud estaba Aceptada) ->
+  Efectos:
+   * Solicitud pasa a Rechazada
+   * Perro vuelve a Disponible (si estaba Adoptado y sigue Aprobado)
+
+### 14.3 Flujo de Aceptación y Reversión
+1. Aceptar una solicitud:
+   - Valida perro Aprobado + Disponible
+   - Requiere documentos (Identificacion y CartaResponsiva)
+   - Marca perro como Adoptado
+   - Rechaza automáticamente otras solicitudes Pendiente / En revisión del mismo perro
+2. Revertir adopción:
+   - Solo ADMIN/REVIEWER
+   - Solicitud Aceptada -> Rechazada
+   - Perro Adoptado -> Disponible (si permanece Aprobado)
+
+### 14.4 Reglas de Negocio Relevantes
+- No se puede aceptar si ya existe otra Aceptada
+- No se puede volver a Disponible un perro no Aprobado
+- Cancelar por usuario inválido si ya está Aceptada o Rechazada
+- No se puede revertir una solicitud que no esté Aceptada
+
+### 14.5 Ejemplos CURL Adopciones Nuevos
+- Crear solicitud (usuario):
+  curl -X POST -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json" \
+       -d '{"perroId":"<perro_uuid>","mensaje":"Quiero adotarlo"}' \
+       http://localhost:8080/api/usuario/adopciones/solicitudes
+
+- Subir documento:
+  curl -X POST -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json" \
+       -d '{"tipoDocumento":"Identificacion","urlDocumento":"https://...","nombreArchivo":"id.pdf"}' \
+       http://localhost:8080/api/usuario/adopciones/solicitudes/{solicitudId}/documentos
+
+- Aceptar solicitud (admin/reviewer):
+  curl -X PATCH -H "Authorization: Bearer $ADMIN" \
+       "http://localhost:8080/api/admin/adopciones/solicitudes/{solicitudId}/estado?estado=Aceptada"
+
+- Revertir adopción:
+  curl -X POST -H "Authorization: Bearer $ADMIN" \
+       http://localhost:8080/api/admin/adopciones/solicitudes/{solicitudId}/revertir
+
+---
+Última actualización: Añadida separación de controladores adopciones y endpoint de reversión.

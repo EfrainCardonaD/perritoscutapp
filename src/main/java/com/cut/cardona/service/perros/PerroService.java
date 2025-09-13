@@ -24,6 +24,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.support.TransactionSynchronization;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
+import org.springframework.dao.DataIntegrityViolationException;
 
 import java.sql.Timestamp;
 import java.util.HashSet;
@@ -269,7 +270,7 @@ public class PerroService {
                 repositorioImagenPerro.findById(rid).ifPresent(repositorioImagenPerro::delete);
             }
         }
-        // Añadir nuevas
+        // Añadir nuevas (siempre principal=false para evitar conflicto de índice único cuando la nueva será la principal)
         if (!plan.toAdd().isEmpty()) {
             for (String nid : plan.toAdd()) {
                 var imgReq = reqMap.get(nid);
@@ -280,7 +281,7 @@ public class PerroService {
                             .perro(perro)
                             .url(publicUrl)
                             .descripcion(imgReq.descripcion())
-                            .principal(Boolean.TRUE.equals(imgReq.principal()))
+                            .principal(false)
                             .fechaSubida(new Timestamp(System.currentTimeMillis()))
                             .build();
                     repositorioImagenPerro.save(nueva);
@@ -410,4 +411,5 @@ public class PerroService {
         }
         return img;
     }
+
 }

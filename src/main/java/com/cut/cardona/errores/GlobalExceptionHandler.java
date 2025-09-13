@@ -86,10 +86,13 @@ public class GlobalExceptionHandler {
         log.error("Data integrity violation: {}", ex.getMessage());
 
         String errorMessage = "Error de integridad de datos";
-        String specificCause = ex.getMostSpecificCause().getMessage().toLowerCase();
+        String specificCause = ex.getMostSpecificCause() != null && ex.getMostSpecificCause().getMessage() != null
+                ? ex.getMostSpecificCause().getMessage().toLowerCase()
+                : "";
 
-        // Mensajes personalizados según el tipo de violación
-        if (specificCause.contains("email")) {
+        if (specificCause.contains("uk_imagen_principal_perro")) {
+            errorMessage = "Solo puede haber una imagen principal por perro";
+        } else if (specificCause.contains("email")) {
             errorMessage = "Este email ya está registrado en el sistema";
         } else if (specificCause.contains("user_name") || specificCause.contains("username")) {
             errorMessage = "Este nombre de usuario ya está en uso";

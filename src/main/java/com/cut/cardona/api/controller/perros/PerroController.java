@@ -13,6 +13,7 @@ import jakarta.validation.constraints.Size;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
@@ -56,22 +57,26 @@ public class PerroController {
     }
 
     @PostMapping("/admin/perros/{id}/aprobar")
+    @PreAuthorize("hasRole('ADMIN, REVIEWER')")
     public ResponseEntity<RestResponse<DtoPerro>> aprobar(@PathVariable("id") String id) {
         DtoPerro dto = perroService.aprobarPerro(id);
         return ResponseEntity.ok(RestResponse.success("Perro aprobado", dto));
     }
 
+    @PreAuthorize("hasRole('ADMIN, REVIEWER')")
     @PostMapping("/admin/perros/{id}/rechazar")
     public ResponseEntity<RestResponse<DtoPerro>> rechazar(@PathVariable("id") String id) {
         DtoPerro dto = perroService.rechazarPerro(id);
         return ResponseEntity.ok(RestResponse.success("Perro rechazado", dto));
     }
 
+    @PreAuthorize("hasRole('ADMIN, REVIEWER')")
     @PatchMapping("/admin/perros/{id}/estado")
     public ResponseEntity<RestResponse<DtoPerro>> cambiarEstado(@PathVariable("id") String id, @RequestParam("estado") String estado) {
         DtoPerro dto = perroService.cambiarEstadoAdopcion(id, estado);
         return ResponseEntity.ok(RestResponse.success("Estado de adopción actualizado", dto));
     }
+
 
     @GetMapping("/perros/{id}")
     public ResponseEntity<RestResponse<DtoPerro>> detalle(@PathVariable("id") String id) {
@@ -79,6 +84,7 @@ public class PerroController {
         DtoPerro dto = perroService.obtenerPerro(id);
         return ResponseEntity.ok(RestResponse.success("Detalle perro", dto));
     }
+
 
     @PatchMapping("/perros/{id}")
     public ResponseEntity<RestResponse<DtoPerro>> actualizar(@PathVariable("id") String id,

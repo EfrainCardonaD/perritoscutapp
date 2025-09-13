@@ -6,8 +6,11 @@ import com.cut.cardona.modelo.imagenes.ImagenPerfil;
 import com.cut.cardona.modelo.imagenes.RepositorioImagenPerfil;
 import com.cut.cardona.modelo.usuarios.RepositorioUsuario;
 import com.cut.cardona.modelo.usuarios.Usuario;
+import com.cut.cardona.modelo.dto.perfil.DtoPerfilCompleto;
+import com.cut.cardona.modelo.dto.perfil.DtoActualizarPerfilRequest;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.util.Optional;
 
@@ -17,6 +20,7 @@ public class PerfilService {
 
     private final RepositorioUsuario repositorioUsuario;
     private final RepositorioImagenPerfil repositorioImagenPerfil;
+    private final PerfilUsuarioService perfilUsuarioService; // nueva dependencia
 
     // Conversión existente usada por AuthenticationService
     public DtoUsuario toDto(Usuario usuario) {
@@ -56,6 +60,19 @@ public class PerfilService {
         return repositorioImagenPerfil.findActivaByUsuarioId(usuarioId)
                 .map(ImagenPerfil::getUrlPublica)
                 .orElse(null); // El front puede manejar null como "sin foto"
+    }
+
+    // --- Fachada a servicio extendido de perfil ---
+    public java.util.Optional<DtoPerfilCompleto> obtenerPerfilCompleto(String usuarioId) {
+        return perfilUsuarioService.obtenerPerfilCompleto(usuarioId);
+    }
+
+    public DtoPerfilCompleto actualizarPerfilCampos(String usuarioId, DtoActualizarPerfilRequest request) {
+        return perfilUsuarioService.actualizarPerfilCampos(usuarioId, request);
+    }
+
+    public String actualizarFotoPerfil(String usuarioId, MultipartFile archivo) {
+        return perfilUsuarioService.actualizarImagenPerfil(usuarioId, archivo);
     }
 
     // Posibles métodos adicionales futuros (crear/actualizar usuario) podrían ir aquí

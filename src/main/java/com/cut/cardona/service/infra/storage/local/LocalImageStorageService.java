@@ -3,7 +3,6 @@ package com.cut.cardona.service.infra.storage.local;
 import com.cut.cardona.service.infra.storage.ImageStorageService;
 import com.cut.cardona.service.infra.storage.UploadResult;
 import com.cut.cardona.modelo.perros.RepositorioImagenPerro;
-import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.util.StringUtils;
 import org.springframework.web.multipart.MultipartFile;
@@ -28,7 +27,6 @@ import javax.imageio.ImageWriter;
 import javax.imageio.stream.ImageOutputStream;
 
 @Slf4j
-@RequiredArgsConstructor
 public class LocalImageStorageService implements ImageStorageService {
 
     private static final long MAX_PROFILE_SIZE = 15L * 1024 * 1024; // 15MB
@@ -37,6 +35,16 @@ public class LocalImageStorageService implements ImageStorageService {
 
     private final String perrosDir;
     private final String perfilesDir;
+    private final String documentosDir;
+
+    public LocalImageStorageService(String perrosDir, String perfilesDir) {
+        this(perrosDir, perfilesDir, "uploads/documentos/");
+    }
+    public LocalImageStorageService(String perrosDir, String perfilesDir, String documentosDir) {
+        this.perrosDir = perrosDir;
+        this.perfilesDir = perfilesDir;
+        this.documentosDir = documentosDir;
+    }
 
     @Override
     public UploadResult uploadDogImage(MultipartFile file) throws Exception {
@@ -50,6 +58,25 @@ public class LocalImageStorageService implements ImageStorageService {
         validate(file, MAX_PROFILE_SIZE);
         ensureDir(perfilesDir);
         return saveProfileToDir(file, perfilesDir);
+    }
+
+    @Override
+    public UploadResult uploadDocumentImage(MultipartFile file) throws Exception {
+        validate(file, MAX_DOG_SIZE);
+        ensureDir(documentosDir);
+        String original = file.getOriginalFilename();
+        String ext = "." + getExtension(original);
+        String id = UUID.randomUUID().toString();
+        String filename = id + ext.toLowerCase();
+        Path destino = Paths.get(documentosDir).resolve(filename).normalize();
+        Files.copy(file.getInputStream(), destino, StandardCopyOption.REPLACE_EXISTING);
+        return UploadResult.builder()
+                .id(id)
+                .filename(filename)
+                .url("/api/documentos/" + id)
+                .contentType(file.getContentType())
+                .size(file.getSize())
+                .build();
     }
 
     private UploadResult saveDogToDir(MultipartFile file, String baseDir) throws IOException {
@@ -194,6 +221,9 @@ public class LocalImageStorageService implements ImageStorageService {
     public String resolveProfileImagePublicUrl(String id) { return "/api/imagenes/perfil/" + id + ".jpg"; }
 
     @Override
+    public String resolveDocumentImagePublicUrl(String id) { return "/api/documentos/" + id; }
+
+    @Override
     public void deleteProfileImage(String id) {
         // Intentar eliminar archivo de perfil basado en patrones comunes
         try {
@@ -209,6 +239,20 @@ public class LocalImageStorageService implements ImageStorageService {
         } catch (Exception e) {
             log.debug("deleteProfileImage local ignorado: {}", e.getMessage());
         }
+    }
+
+    @Override
+    public void deleteDocumentImage(String id) {
+        try {
+            if (!Files.exists(Paths.get(documentosDir))) return;
+            String[] exts = {"jpg","jpeg","png","gif","webp"};
+            for (String ext : exts) {
+                Path p = Paths.get(documentosDir).resolve(id + "." + ext);
+                if (Files.exists(p)) {
+                    try { Files.delete(p); } catch (Exception e) { log.warn("No se pudo borrar documento {}: {}", p, e.getMessage()); }
+                }
+            }
+        } catch (Exception ignored) {}
     }
 
     @Override

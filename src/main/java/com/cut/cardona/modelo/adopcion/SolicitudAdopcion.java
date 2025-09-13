@@ -55,4 +55,6 @@ public class SolicitudAdopcion {
 
     @Version
     private Long version;
+
+
 }

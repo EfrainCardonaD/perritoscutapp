@@ -9,21 +9,25 @@ public interface ImageStorageService {
 
     UploadResult uploadProfileImage(MultipartFile file) throws Exception;
 
+    // Nuevo: documentos (identificaciones / soportes de adopción)
+    default UploadResult uploadDocumentImage(MultipartFile file) throws Exception { throw new UnsupportedOperationException("No implementado"); }
+
     boolean isCloudProvider();
 
     String resolveDogImagePublicUrl(String id);
 
     String resolveProfileImagePublicUrl(String id);
 
-    // Nuevo: borrar imagen de perro por id (public_id)
-    default void deleteDogImage(String id) {
-        // no-op por defecto
-    }
+    default String resolveDocumentImagePublicUrl(String id) { return null; }
 
-    // Nuevo: borrar imagen de perfil por id (public_id)
-    default void deleteProfileImage(String id) {
-        // no-op por defecto
-    }
+    // Borrar imagen de perro
+    default void deleteDogImage(String id) { }
+
+    // Borrar imagen de perfil
+    default void deleteProfileImage(String id) { }
+
+    // Borrar documento
+    default void deleteDocumentImage(String id) { }
 
     int cleanupOrphanImages(RepositorioImagenPerro repositorioImagenPerro);
 

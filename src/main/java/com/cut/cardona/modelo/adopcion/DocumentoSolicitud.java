@@ -23,7 +23,7 @@ public class DocumentoSolicitud {
     private SolicitudAdopcion solicitud;
 
     @Column(name = "tipo_documento", length = 30, nullable = false)
-    private String tipoDocumento; // 'Identificacion' | 'CartaResponsiva'
+    private String tipoDocumento; // 'Identificacion + carta responsiva'
 
     @Column(name = "url_documento", length = 500, nullable = false)
     private String urlDocumento;
