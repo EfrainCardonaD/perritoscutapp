@@ -32,4 +32,7 @@ public interface RepositorioPerro extends JpaRepository<Perro, String> {
 
     @Query("SELECT p FROM Perro p WHERE p.estadoAdopcion = :estado")
     List<Perro> findByEstadoAdopcion(@Param("estado") PerroEstadoAdopcion estado);
+
+    // Nuevo: búsqueda por estado de revisión (derivable pero lo declaramos explícito por consistencia)
+    List<Perro> findByEstadoRevision(PerroEstadoRevision estado);
 }

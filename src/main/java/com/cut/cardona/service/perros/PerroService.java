@@ -129,6 +129,8 @@ public class PerroService {
         }
     }
 
+
+
     private record UpdatePlan(Set<String> toAdd, Set<String> toRemove, Set<String> toKeep, String principalId) {}
 
     // TODO(Fase2): tests unitarios de planUpdateImagenes
@@ -222,6 +224,45 @@ public class PerroService {
             throw new UnprocessableEntityException("Solo perros aprobados pueden estar disponibles");
         }
         perro.setEstadoAdopcion(nuevo);
+        Perro saved = repositorioPerro.save(perro);
+        return new DtoPerro(saved);
+    }
+
+
+    @PreAuthorize("hasAnyRole('ADMIN','REVIEWER')")
+    public DtoPerro cambiarRevision(String id, String revision) {
+        Perro perro = repositorioPerro.findById(id).orElseThrow();
+        PerroEstadoRevision anterior = perro.getEstadoRevision();
+        PerroEstadoRevision nuevo = PerroEstadoRevision.fromLabel(revision);
+        if (nuevo == PerroEstadoRevision.RECHAZADO && perro.getEstadoAdopcion() == PerroEstadoAdopcion.ADOPTADO) {
+            throw new UnprocessableEntityException("No se puede cambiar el estado de este perro");
+        }
+        if (nuevo == PerroEstadoRevision.RECHAZADO){
+            perro.setFechaRevision(new Timestamp(System.currentTimeMillis()));
+            perro.setRevisadoPor(
+                    repositorioUsuario.findByUserName(SecurityContextHolder.getContext().getAuthentication().getName())
+                            .orElseThrow()
+            );
+            perro.setEstadoAdopcion(PerroEstadoAdopcion.NO_DISPONIBLE);
+        }
+        if (nuevo == PerroEstadoRevision.APROBADO ){
+            perro.setFechaRevision(new Timestamp(System.currentTimeMillis()));
+            perro.setRevisadoPor(
+                    repositorioUsuario.findByUserName(SecurityContextHolder.getContext().getAuthentication().getName())
+                            .orElseThrow()
+            );
+            perro.setEstadoAdopcion(PerroEstadoAdopcion.DISPONIBLE);
+        }
+        if (nuevo == PerroEstadoRevision.PENDIENTE) {
+            perro.setFechaRevision(new Timestamp(System.currentTimeMillis()));
+            perro.setRevisadoPor(
+                    repositorioUsuario.findByUserName(SecurityContextHolder.getContext().getAuthentication().getName())
+                            .orElseThrow()
+            );
+            perro.setEstadoAdopcion(PerroEstadoAdopcion.PENDIENTE);
+        }
+        // Si estaba en catálogo y se cambia a no aprobado, poner a No Disponible);
+        perro.setEstadoRevision(nuevo);
         Perro saved = repositorioPerro.save(perro);
         return new DtoPerro(saved);
     }

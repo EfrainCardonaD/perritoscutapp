@@ -1,12 +1,11 @@
 package com.cut.cardona.service.perfil;
+import com.cut.cardona.modelo.dto.perfil.DtoPerfilCompleto;
 import com.cut.cardona.modelo.dto.usuarios.DtoUsuario;
-import com.cut.cardona.modelo.dto.usuarios.DtoUsuarioDetalle;
 import com.cut.cardona.modelo.dto.usuarios.DtoUsuarioResumen;
 import com.cut.cardona.modelo.imagenes.ImagenPerfil;
 import com.cut.cardona.modelo.imagenes.RepositorioImagenPerfil;
 import com.cut.cardona.modelo.usuarios.RepositorioUsuario;
 import com.cut.cardona.modelo.usuarios.Usuario;
-import com.cut.cardona.modelo.dto.perfil.DtoPerfilCompleto;
 import com.cut.cardona.modelo.dto.perfil.DtoActualizarPerfilRequest;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -43,16 +42,18 @@ public class PerfilService {
     }
 
     // --- DTO Detalle (más campos del usuario) ---
-    public Optional<DtoUsuarioDetalle> obtenerDetallePorId(String id) {
-        return repositorioUsuario.findById(id).map(DtoUsuarioDetalle::from);
+    public Optional<DtoPerfilCompleto> obtenerDetallePorId(String id) {
+        return perfilUsuarioService.obtenerPerfilCompleto(id);
     }
 
-    public Optional<DtoUsuarioDetalle> obtenerDetallePorUserName(String userName) {
-        return repositorioUsuario.findByUserName(userName).map(DtoUsuarioDetalle::from);
+    public Optional<DtoPerfilCompleto> obtenerDetallePorUserName(String userName) {
+        return repositorioUsuario.findByUserName(userName)
+                .map(u -> DtoPerfilCompleto.from(u, perfilUsuarioService));
     }
 
-    public Optional<DtoUsuarioDetalle> obtenerDetallePorEmail(String email) {
-        return repositorioUsuario.findByEmail(email).map(DtoUsuarioDetalle::from);
+    public Optional<DtoPerfilCompleto> obtenerDetallePorEmail(String email) {
+        return repositorioUsuario.findByEmail(email)
+                .map(u -> DtoPerfilCompleto.from(u, perfilUsuarioService));
     }
 
     // Método auxiliar para recuperar la URL pública de la imagen de perfil activa
@@ -63,11 +64,11 @@ public class PerfilService {
     }
 
     // --- Fachada a servicio extendido de perfil ---
-    public java.util.Optional<DtoPerfilCompleto> obtenerPerfilCompleto(String usuarioId) {
+    public java.util.Optional<com.cut.cardona.modelo.dto.perfil.DtoPerfilCompleto> obtenerPerfilCompleto(String usuarioId) {
         return perfilUsuarioService.obtenerPerfilCompleto(usuarioId);
     }
 
-    public DtoPerfilCompleto actualizarPerfilCampos(String usuarioId, DtoActualizarPerfilRequest request) {
+    public com.cut.cardona.modelo.dto.perfil.DtoPerfilCompleto actualizarPerfilCampos(String usuarioId, DtoActualizarPerfilRequest request) {
         return perfilUsuarioService.actualizarPerfilCampos(usuarioId, request);
     }
 

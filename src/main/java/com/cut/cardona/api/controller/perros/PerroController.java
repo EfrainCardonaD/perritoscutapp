@@ -57,23 +57,31 @@ public class PerroController {
     }
 
     @PostMapping("/admin/perros/{id}/aprobar")
-    @PreAuthorize("hasRole('ADMIN, REVIEWER')")
+    @PreAuthorize("hasAnyRole('ADMIN','REVIEWER')")
     public ResponseEntity<RestResponse<DtoPerro>> aprobar(@PathVariable("id") String id) {
         DtoPerro dto = perroService.aprobarPerro(id);
         return ResponseEntity.ok(RestResponse.success("Perro aprobado", dto));
     }
 
-    @PreAuthorize("hasRole('ADMIN, REVIEWER')")
+    @PreAuthorize("hasAnyRole('ADMIN','REVIEWER')")
     @PostMapping("/admin/perros/{id}/rechazar")
     public ResponseEntity<RestResponse<DtoPerro>> rechazar(@PathVariable("id") String id) {
         DtoPerro dto = perroService.rechazarPerro(id);
         return ResponseEntity.ok(RestResponse.success("Perro rechazado", dto));
     }
 
-    @PreAuthorize("hasRole('ADMIN, REVIEWER')")
+    @PreAuthorize("hasAnyRole('ADMIN','REVIEWER')")
     @PatchMapping("/admin/perros/{id}/estado")
     public ResponseEntity<RestResponse<DtoPerro>> cambiarEstado(@PathVariable("id") String id, @RequestParam("estado") String estado) {
         DtoPerro dto = perroService.cambiarEstadoAdopcion(id, estado);
+        return ResponseEntity.ok(RestResponse.success("Estado de adopción actualizado", dto));
+    }
+
+
+    @PreAuthorize("hasAnyRole('ADMIN','REVIEWER')")
+    @PatchMapping("/admin/perros/{id}/revision")
+    public ResponseEntity<RestResponse<DtoPerro>> cambiarRevision(@PathVariable("id") String id, @RequestParam("revision") String revision) {
+        DtoPerro dto = perroService.cambiarRevision(id, revision);
         return ResponseEntity.ok(RestResponse.success("Estado de adopción actualizado", dto));
     }
 

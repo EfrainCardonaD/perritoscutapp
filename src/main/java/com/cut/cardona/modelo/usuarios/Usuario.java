@@ -1,5 +1,8 @@
 package com.cut.cardona.modelo.usuarios;
 
+import com.cut.cardona.modelo.dto.perfil.DtoPerfilCompleto;
+import com.cut.cardona.modelo.imagenes.ImagenPerfil;
+import com.cut.cardona.modelo.perfil.PerfilUsuario;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.Email;
 import lombok.AllArgsConstructor;
@@ -15,6 +18,7 @@ import java.util.*;
 import java.sql.Timestamp;
 import java.util.UUID; // ✅ Import faltante agregado
 import com.cut.cardona.modelo.dto.registro.DtoRegistroUsuario; // ✅ Usar DTO en paquete correcto
+import org.springframework.transaction.annotation.Transactional;
 
 
 @Entity
@@ -157,4 +161,6 @@ public class Usuario implements UserDetails {
             this.rol = Roles.ROLE_USER;
         }
     }
+
+
 }
