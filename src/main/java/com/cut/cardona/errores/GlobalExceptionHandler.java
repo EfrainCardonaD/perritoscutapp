@@ -39,6 +39,15 @@ public class GlobalExceptionHandler {
         return build(HttpStatus.BAD_REQUEST, ex.getMessage(), "BAD_REQUEST", req);
     }
 
+    // Manejo específico para reglas de negocio/validaciones propias
+    @ExceptionHandler(ValidacionDeIntegridad.class)
+    public ResponseEntity<ErrorResponse> handleBusinessRule(ValidacionDeIntegridad ex, HttpServletRequest req) {
+        // Nota: por simplicidad se devuelve 400 para todas las ValidacionDeIntegridad.
+        // Si se requiere granularidad (401/403/409), crear excepciones más específicas o añadir un código interno.
+        log.warn("Business validation error: {}", ex.getMessage());
+        return build(HttpStatus.BAD_REQUEST, ex.getMessage(), "BUSINESS_RULE_VIOLATION", req);
+    }
+
     @ExceptionHandler({SecurityException.class, AccessDeniedException.class})
     public ResponseEntity<ErrorResponse> handleForbidden(RuntimeException ex, HttpServletRequest req) {
         return build(HttpStatus.FORBIDDEN, ex.getMessage(), "FORBIDDEN", req);
@@ -83,4 +92,3 @@ public class GlobalExceptionHandler {
         return build(HttpStatus.INTERNAL_SERVER_ERROR, "Error interno inesperado", "INTERNAL_ERROR", req);
     }
 }
-
